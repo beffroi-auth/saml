@@ -19,7 +19,7 @@ use Beffroi\Xml\Core\Serializer;
  * md:EntityDescriptor.
  *
  * Unsigned: the key that would sign it is a key it publishes, so a service provider trusts it by the channel it came
- * through. No validUntil, no encryption certificate (issue #733).
+ * through. No validUntil, no encryption certificate: the identity provider decrypts nothing (spec/saml.md section 11).
  */
 final readonly class ModelMetadataWriter implements MetadataWriterInterface
 {

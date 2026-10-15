@@ -10,6 +10,7 @@ use Beffroi\Core\Exception\RuntimeException;
 use Beffroi\Core\Port\KeptSigningKeyProviderInterface;
 use Beffroi\Saml\Bridge\Pki\RsaPrivateKey;
 use Beffroi\Saml\Domain\Key\SamlSigningAlgorithmInterface;
+use Beffroi\Saml\Domain\Metadata\Certificate;
 use Beffroi\Saml\Domain\SingleSignOn\AttributeValue;
 use Beffroi\Saml\Domain\SingleSignOn\PostedForm;
 use Beffroi\Saml\Domain\SingleSignOn\ReleasedAttribute;
@@ -32,11 +33,15 @@ use Beffroi\Saml2\Model\Protocol\SecondLevelStatusCode;
 use Beffroi\Saml2\Model\Protocol\Status;
 use Beffroi\Saml2\Model\Protocol\StatusCode;
 use Beffroi\Saml2\Model\Value\SamlId;
+use Beffroi\Saml2\Model\Writing\Encryption;
 use Beffroi\Saml2\Model\Writing\SignedParts;
 use Beffroi\Saml2\Model\Writing\Signing;
 use Beffroi\Xml\Core\Exception\RefusedXml;
 use Beffroi\Xml\Dsig\PrivateKey;
 use Beffroi\Xml\Dsig\SignatureAlgorithm;
+use Beffroi\Xml\Enc\ContentAlgorithm;
+use Beffroi\Xml\Enc\KeyTransport;
+use Beffroi\Xml\Enc\PeerKey;
 use InvalidArgumentException;
 
 /**
@@ -46,7 +51,9 @@ use InvalidArgumentException;
  * NameID qualified by both entities (S-13), one bearer confirmation and Conditions ending five minutes after the
  * issue, one AudienceRestriction naming the service provider, an authentication statement of the session, the
  * unspecified class, and the attributes released (S-16); the assertion signed, then the response over it, under
- * RSA-SHA256, by the active SAML key of the tenant (S-15); the RelayState received handed back as it is.
+ * RSA-SHA256, by the active SAML key of the tenant (S-15); the RelayState received handed back as it is. For a response
+ * that names the certificate of a service provider, the assertion encrypted by the model's writer between the two
+ * signatures (S-21), for the key of that certificate (S-19), under aes256-gcm and rsa-oaep-mgf1p (S-20).
  *
  * The key is the core's, opened by the KMS once per process (KeptSigningKeyProviderInterface), turned into a key of
  * OpenSSL in memory for the call and dropped with it (S-1).
@@ -93,6 +100,7 @@ final readonly class ModelSignOnResponder implements SignOnResponderInterface
                 $this->signing($tenant),
                 SignedParts::AssertionAndResponse,
                 $request->relayState,
+                self::encryption($response->encryptFor),
             ));
         } catch (RefusedXml|InvalidArgumentException $exception) {
             throw new RuntimeException('The response of single sign-on is one its own reader refuses (spec/saml.md section 6.4 step 7).', 0, $exception);
@@ -129,6 +137,24 @@ final readonly class ModelSignOnResponder implements SignOnResponderInterface
         return new Signing(
             PrivateKey::fromPem(RsaPrivateKey::pem($this->keys->activeKeptSigningKey($tenant, $this->algorithm))),
             SignatureAlgorithm::RsaSha256,
+        );
+    }
+
+    /**
+     * S-19, S-20: the key of the certificate the accepted metadata name, under the one scheme, or nothing to encrypt.
+     *
+     * @throws RefusedXml what Enc refuses of the certificate, which the model's reader already checked (D-16)
+     */
+    private static function encryption(?Certificate $certificate): ?Encryption
+    {
+        if (! $certificate instanceof Certificate) {
+            return null;
+        }
+
+        return new Encryption(
+            PeerKey::fromCertificateBase64($certificate->base64),
+            ContentAlgorithm::Aes256Gcm,
+            KeyTransport::mgf1p(),
         );
     }
 

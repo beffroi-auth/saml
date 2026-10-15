@@ -31,4 +31,13 @@ final readonly class ServiceProviderMetadata
         public array $signingCertificates,
     ) {
     }
+
+    /**
+     * The key an assertion is encrypted for (S-19): the first certificate for encryption, in document order, the one
+     * a SimpleSAMLphp identity provider takes too; null when the document holds none.
+     */
+    public function encryptionCertificate(): ?Certificate
+    {
+        return $this->encryptionCertificates[0] ?? null;
+    }
 }

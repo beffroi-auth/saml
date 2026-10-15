@@ -9,6 +9,7 @@ use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\KeyNotFoundException;
 use Beffroi\Core\Exception\KmsUnavailableException;
 use Beffroi\Core\Exception\RuntimeException;
+use Beffroi\Saml\Domain\Metadata\Certificate;
 use Beffroi\Saml\Domain\ServiceProvider\ServiceProvider;
 use Beffroi\Saml\Domain\SingleSignOn\PersistentNameId;
 use Beffroi\Saml\Domain\SingleSignOn\PostedForm;
@@ -16,10 +17,13 @@ use Beffroi\Saml\Domain\SingleSignOn\SignOnFailure;
 use Beffroi\Saml\Domain\SingleSignOn\SignOnRequest;
 use Beffroi\Saml\Domain\SingleSignOn\SignOnResponse;
 use Beffroi\Saml\Domain\SingleSignOn\SignOnStatus;
+use Beffroi\Saml\Exception\MetadataRefusedException;
 use Beffroi\Saml\Exception\SignOnRefusedException;
+use Beffroi\Saml\Port\AcceptedMetadataRepositoryInterface;
 use Beffroi\Saml\Port\AuthnRequestReceiverInterface;
 use Beffroi\Saml\Port\IdentityProviderEndpointsInterface;
 use Beffroi\Saml\Port\PersistentIdentifierSaltInterface;
+use Beffroi\Saml\Port\ServiceProviderMetadataReaderInterface;
 use Beffroi\Saml\Port\ServiceProvidersInterface;
 use Beffroi\Saml\Port\SignOnResponderInterface;
 use DateTimeImmutable;
@@ -29,7 +33,8 @@ use Psr\Clock\ClockInterface;
 /**
  * Single sign-on, from the request the bundle received to the form the browser posts (spec/saml.md section 6.4): the
  * request accepted and its service provider declared (steps 1 and 2), then, at each step the browser reaches, what the
- * request allows (step 4), the subject and the attributes (steps 5 and 6) and the answer written (step 7). Whether a
+ * request allows (step 4), the subject and the attributes (steps 5 and 6) and the answer written (step 7), the key its
+ * assertion is encrypted for read from the accepted metadata of a service provider that asks for it (S-19). Whether a
  * login is needed is answered here and nowhere else; where the request waits for it is the bundle's (step 3).
  */
 final readonly class SingleSignOn
@@ -50,6 +55,8 @@ final readonly class SingleSignOn
         private PersistentIdentifierSaltInterface $salts,
         private IdentityProviderEndpointsInterface $endpoints,
         private ClockInterface $clock,
+        private AcceptedMetadataRepositoryInterface $acceptedMetadata,
+        private ServiceProviderMetadataReaderInterface $metadataReader,
     ) {
     }
 
@@ -61,7 +68,7 @@ final readonly class SingleSignOn
     public function receiveRedirect(Tenant $tenant, string $queryString): SignOnRequest
     {
         $request = $this->receiver->redirect($tenant, $queryString);
-        $this->declaration($tenant, $request);
+        $this->encryptionKey($tenant, $this->declaration($tenant, $request));
 
         return $request;
     }
@@ -74,7 +81,7 @@ final readonly class SingleSignOn
     public function receivePost(Tenant $tenant, array $fields): SignOnRequest
     {
         $request = $this->receiver->post($tenant, $fields);
-        $this->declaration($tenant, $request);
+        $this->encryptionKey($tenant, $this->declaration($tenant, $request));
 
         return $request;
     }
@@ -85,7 +92,8 @@ final readonly class SingleSignOn
      * @param AuthenticationSession|null $session the session the browser holds, if any
      *
      * @throws SignOnRefusedException when the request waited too long, or its service provider is no longer declared
-     *                                as it was
+     *                                as it was, or asks for its assertions encrypted and its accepted metadata hold no
+     *                                key for it (S-19)
      * @throws KeyNotFoundException when the tenant holds no active SAML key
      * @throws KmsUnavailableException when the KMS does not answer
      * @throws RuntimeException when the salt of the tenant can neither be read nor drawn
@@ -116,6 +124,7 @@ final readonly class SingleSignOn
     /**
      * Section 6.4 steps 5 to 7.
      *
+     * @throws SignOnRefusedException
      * @throws KeyNotFoundException
      * @throws KmsUnavailableException
      * @throws RuntimeException
@@ -138,6 +147,7 @@ final readonly class SingleSignOn
             $session->id->toRfc4122(),
             $session->authenticatedAt(),
             $now,
+            $this->encryptionKey($tenant, $declaration),
         ));
     }
 
@@ -169,21 +179,36 @@ final readonly class SingleSignOn
     }
 
     /**
-     * Section 6.4 step 2: the declaration of the service provider, which asks for no encryption while the identity
-     * provider encrypts nothing (S-7, issue #733).
+     * Section 6.4 step 2: the declaration of the service provider, still declared.
      *
      * @throws SignOnRefusedException
      */
     private function declaration(Tenant $tenant, SignOnRequest $request): ServiceProvider
     {
-        $declaration = $this->serviceProviders->find($tenant, $request->serviceProvider);
-        if ($declaration === null) {
-            throw new SignOnRefusedException('The service provider of the request is no longer declared (spec/saml.md section 6.4 step 2).');
+        return $this->serviceProviders->find($tenant, $request->serviceProvider)
+            ?? throw new SignOnRefusedException('The service provider of the request is no longer declared (spec/saml.md section 6.4 step 2).');
+    }
+
+    /**
+     * S-19, section 6.4 steps 2 and 7: the key the assertion is encrypted for, the first certificate for encryption of
+     * the accepted metadata of a service provider whose declaration asks for it, read back now; null for one that does
+     * not ask (S-7). A provider that asks and whose accepted document holds no such key, or reads back no more, is
+     * refused: nothing is sent in clear.
+     *
+     * @throws SignOnRefusedException
+     */
+    private function encryptionKey(Tenant $tenant, ServiceProvider $declaration): ?Certificate
+    {
+        if (! $declaration->encryptAssertions) {
+            return null;
         }
-        if ($declaration->encryptAssertions) {
-            throw new SignOnRefusedException('The service provider asks for its assertions encrypted, which this identity provider does not do yet: none is sent in clear (spec/saml.md S-7).');
+        $accepted = $this->acceptedMetadata->find($tenant, $declaration->entityId);
+        try {
+            $certificate = $accepted === null ? null : $this->metadataReader->readTrusted($accepted->document)->encryptionCertificate();
+        } catch (MetadataRefusedException) {
+            $certificate = null;
         }
 
-        return $declaration;
+        return $certificate ?? throw new SignOnRefusedException('The service provider asks for its assertions encrypted and no key for encryption is read back from its accepted metadata: none is sent in clear (spec/saml.md S-19).');
     }
 }
