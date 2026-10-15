@@ -18,7 +18,10 @@ tenant so far, its signing key, kept by the KMS as every key of the tenant, the 
 key and the metadata that publishes it, the next key's certificate beside the current one before it signs anything;
 and the service providers of the tenant, declared in its configuration, their metadata read from a file or an `https`
 URL, trusted by that channel or verified under pinned certificates, refused when expired or older than the document
-accepted, and refused when they ask for encryption without a key for it.
+accepted, and refused when they ask for encryption without a key for it; and the signature the authentication requests
+of a service provider need, required unless its declaration says it does not sign and its metadata do not say it
+does, whatever the tenant announces, the assertion going only to an assertion consumer service of its accepted
+metadata.
 
 The package requires PHP 8.4 or later, `beffroi/core`, `beffroi/saml2-model`, `beffroi/saml2-bindings`,
 `beffroi/xml-security` and `spomky-labs/pki-framework`.
