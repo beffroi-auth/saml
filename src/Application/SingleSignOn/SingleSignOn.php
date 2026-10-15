@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Beffroi\Saml\Application\SingleSignOn;
 
 use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Domain\Session\RequestContext;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\KeyNotFoundException;
 use Beffroi\Core\Exception\KmsUnavailableException;
 use Beffroi\Core\Exception\RuntimeException;
+use Beffroi\Saml\Domain\Event\ServiceProviderSignedIn;
 use Beffroi\Saml\Domain\Metadata\Certificate;
 use Beffroi\Saml\Domain\ServiceProvider\ServiceProvider;
 use Beffroi\Saml\Domain\SingleSignOn\PersistentNameId;
@@ -29,13 +31,15 @@ use Beffroi\Saml\Port\SignOnResponderInterface;
 use DateTimeImmutable;
 use function in_array;
 use Psr\Clock\ClockInterface;
+use Psr\EventDispatcher\EventDispatcherInterface;
 
 /**
  * Single sign-on, from the request the bundle received to the form the browser posts (spec/saml.md section 6.4): the
  * request accepted and its service provider declared (steps 1 and 2), then, at each step the browser reaches, what the
  * request allows (step 4), the subject and the attributes (steps 5 and 6) and the answer written (step 7), the key its
  * assertion is encrypted for read from the accepted metadata of a service provider that asks for it (S-19). Whether a
- * login is needed is answered here and nowhere else; where the request waits for it is the bundle's (step 3).
+ * login is needed is answered here and nowhere else; where the request waits for it is the bundle's (step 3). A
+ * success announces the service provider's part in the session, which the bundle records asynchronously (S-26).
  */
 final readonly class SingleSignOn
 {
@@ -57,6 +61,7 @@ final readonly class SingleSignOn
         private ClockInterface $clock,
         private AcceptedMetadataRepositoryInterface $acceptedMetadata,
         private ServiceProviderMetadataReaderInterface $metadataReader,
+        private EventDispatcherInterface $events,
     ) {
     }
 
@@ -90,6 +95,7 @@ final readonly class SingleSignOn
      * The form that answers the request, or null when the browser has to sign in first (section 6.4 step 4, S-17).
      *
      * @param AuthenticationSession|null $session the session the browser holds, if any
+     * @param RequestContext $context the request that reached the answer, which the event of a success carries (S-26)
      *
      * @throws SignOnRefusedException when the request waited too long, or its service provider is no longer declared
      *                                as it was, or asks for its assertions encrypted and its accepted metadata hold no
@@ -98,7 +104,7 @@ final readonly class SingleSignOn
      * @throws KmsUnavailableException when the KMS does not answer
      * @throws RuntimeException when the salt of the tenant can neither be read nor drawn
      */
-    public function answer(Tenant $tenant, SignOnRequest $request, ?AuthenticationSession $session): ?PostedForm
+    public function answer(Tenant $tenant, SignOnRequest $request, ?AuthenticationSession $session, RequestContext $context): ?PostedForm
     {
         $now = $this->clock->now();
         if ($now >= $request->expiresAt()) {
@@ -110,7 +116,7 @@ final readonly class SingleSignOn
         if ($status === null) {
             $answering = self::answering($tenant, $request, $session, $now);
             if ($answering !== null) {
-                return $this->success($tenant, $declaration, $identityProvider, $request, $answering, $now);
+                return $this->success($tenant, $declaration, $identityProvider, $request, $answering, $now, $context);
             }
             if (! $request->isPassive) {
                 return null;
@@ -122,7 +128,7 @@ final readonly class SingleSignOn
     }
 
     /**
-     * Section 6.4 steps 5 to 7.
+     * Section 6.4 steps 5 to 7, and S-26.
      *
      * @throws SignOnRefusedException
      * @throws KeyNotFoundException
@@ -136,10 +142,10 @@ final readonly class SingleSignOn
         SignOnRequest $request,
         AuthenticationSession $session,
         DateTimeImmutable $now,
+        RequestContext $context,
     ): PostedForm {
         $user = $session->user;
-
-        return $this->responder->success($tenant, new SignOnResponse(
+        $form = $this->responder->success($tenant, new SignOnResponse(
             $identityProvider,
             $request,
             PersistentNameId::derive($declaration->entityId, $user->subject, $this->salts->saltOf($tenant)),
@@ -149,6 +155,9 @@ final readonly class SingleSignOn
             $now,
             $this->encryptionKey($tenant, $declaration),
         ));
+        $this->events->dispatch(new ServiceProviderSignedIn($now, $tenant, $session->id, $declaration->entityId, $user->subject, $context));
+
+        return $form;
     }
 
     /**

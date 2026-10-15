@@ -7,9 +7,6 @@ namespace Beffroi\Saml\Bridge\Model;
 use function array_map;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\RuntimeException;
-use Beffroi\Core\Port\KeptSigningKeyProviderInterface;
-use Beffroi\Saml\Bridge\Pki\RsaPrivateKey;
-use Beffroi\Saml\Domain\Key\SamlSigningAlgorithmInterface;
 use Beffroi\Saml\Domain\Metadata\Certificate;
 use Beffroi\Saml\Domain\SingleSignOn\AttributeValue;
 use Beffroi\Saml\Domain\SingleSignOn\PostedForm;
@@ -35,10 +32,7 @@ use Beffroi\Saml2\Model\Protocol\StatusCode;
 use Beffroi\Saml2\Model\Value\SamlId;
 use Beffroi\Saml2\Model\Writing\Encryption;
 use Beffroi\Saml2\Model\Writing\SignedParts;
-use Beffroi\Saml2\Model\Writing\Signing;
 use Beffroi\Xml\Core\Exception\RefusedXml;
-use Beffroi\Xml\Dsig\PrivateKey;
-use Beffroi\Xml\Dsig\SignatureAlgorithm;
 use Beffroi\Xml\Enc\ContentAlgorithm;
 use Beffroi\Xml\Enc\KeyTransport;
 use Beffroi\Xml\Enc\PeerKey;
@@ -55,8 +49,7 @@ use InvalidArgumentException;
  * that names the certificate of a service provider, the assertion encrypted by the model's writer between the two
  * signatures (S-21), for the key of that certificate (S-19), under aes256-gcm and rsa-oaep-mgf1p (S-20).
  *
- * The key is the core's, opened by the KMS once per process (KeptSigningKeyProviderInterface), turned into a key of
- * OpenSSL in memory for the call and dropped with it (S-1).
+ * The key is the core's, opened by the KMS once per process, through TenantSigning (S-1).
  */
 final readonly class ModelSignOnResponder implements SignOnResponderInterface
 {
@@ -66,8 +59,7 @@ final readonly class ModelSignOnResponder implements SignOnResponderInterface
     public const string CONTEXT_CLASS = 'urn:oasis:names:tc:SAML:2.0:ac:classes:unspecified';
 
     public function __construct(
-        private KeptSigningKeyProviderInterface $keys,
-        private SamlSigningAlgorithmInterface $algorithm,
+        private TenantSigning $signing,
         private PostSender $sender = new PostSender(),
     ) {
     }
@@ -97,7 +89,7 @@ final readonly class ModelSignOnResponder implements SignOnResponderInterface
                         array_map(self::attribute(...), $response->attributes),
                     ),
                 ),
-                $this->signing($tenant),
+                $this->signing->of($tenant),
                 SignedParts::AssertionAndResponse,
                 $request->relayState,
                 self::encryption($response->encryptFor),
@@ -121,23 +113,12 @@ final readonly class ModelSignOnResponder implements SignOnResponderInterface
                     new Status(StatusCode::fromUri($failure->status->topLevel()), SecondLevelStatusCode::tryFromUri($failure->status->value)),
                     null,
                 ),
-                $this->signing($tenant),
+                $this->signing->of($tenant),
                 $request->relayState,
             ));
         } catch (RefusedXml|InvalidArgumentException $exception) {
             throw new RuntimeException('The failure of single sign-on is one its own reader refuses (spec/saml.md section 6.4 step 7).', 0, $exception);
         }
-    }
-
-    /**
-     * The active SAML key of the tenant as Dsig signs with it, under RSA-SHA256 (S-15).
-     */
-    private function signing(Tenant $tenant): Signing
-    {
-        return new Signing(
-            PrivateKey::fromPem(RsaPrivateKey::pem($this->keys->activeKeptSigningKey($tenant, $this->algorithm))),
-            SignatureAlgorithm::RsaSha256,
-        );
     }
 
     /**

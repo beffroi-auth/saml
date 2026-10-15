@@ -9,10 +9,8 @@ use Beffroi\Saml\Domain\ServiceProvider\AuthnRequestSigning;
 use Beffroi\Saml\Domain\SingleSignOn\SignOnRequest;
 use Beffroi\Saml\Exception\MetadataRefusedException;
 use Beffroi\Saml\Exception\SignOnRefusedException;
-use Beffroi\Saml\Port\AcceptedMetadataRepositoryInterface;
 use Beffroi\Saml\Port\AuthnRequestReceiverInterface;
 use Beffroi\Saml\Port\IdentityProviderEndpointsInterface;
-use Beffroi\Saml\Port\ServiceProvidersInterface;
 use Beffroi\Saml2\Bindings\PostReceiver;
 use Beffroi\Saml2\Bindings\ReceivedAuthnRequest;
 use Beffroi\Saml2\Bindings\RedirectReceiver;
@@ -43,9 +41,7 @@ final readonly class ModelAuthnRequestReceiver implements AuthnRequestReceiverIn
     private AuthnRequestValidator $validator;
 
     public function __construct(
-        private ServiceProvidersInterface $serviceProviders,
-        private AcceptedMetadataRepositoryInterface $accepted,
-        private ModelServiceProviderMetadataReader $reader,
+        private DeclaredServiceProviderReader $serviceProviders,
         private IdentityProviderEndpointsInterface $endpoints,
         private ClockInterface $clock,
     ) {
@@ -84,20 +80,13 @@ final readonly class ModelAuthnRequestReceiver implements AuthnRequestReceiverIn
      */
     private function validated(Tenant $tenant, ReceivedAuthnRequest $received): SignOnRequest
     {
-        $issuer = $received->request->issuer;
-        $declaration = $issuer === null ? null : $this->serviceProviders->find($tenant, $issuer);
-        if ($declaration === null) {
-            throw new SignOnRefusedException('The Issuer of the request is no service provider this tenant declares (spec/saml.md section 6.3 step 1).');
-        }
-        $accepted = $this->accepted->find($tenant, $declaration->entityId);
-        if ($accepted === null) {
-            throw new SignOnRefusedException('The service provider of the request has no metadata accepted yet (spec/saml.md section 6.3 step 1).');
-        }
         try {
-            $read = $this->reader->readAccepted($accepted->document);
+            $serviceProvider = $this->serviceProviders->read($tenant, $received->request->issuer);
         } catch (MetadataRefusedException $exception) {
             throw new SignOnRefusedException($exception->getMessage(), 0, $exception);
         }
+        $declaration = $serviceProvider->declaration;
+        $read = $serviceProvider->read;
         $endpoints = $this->endpoints->locate($tenant);
         $parties = new ModelAuthnRequestParties(
             AuthnRequestSigning::of($declaration, $read->metadata),
