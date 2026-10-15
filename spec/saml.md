@@ -381,7 +381,7 @@ Each item is marked **left**, with the issue it goes to, **open**, with who deci
 **Left**: the stories of sub-spike 9c, in the order of their dependencies, each a pull request that writes the part of this document its code needs.
 
 - beffroi-php/beffroi#727, `saml2-bindings`: the senders refuse a `Destination` that is neither `http` nor `https` (finding 1 of the security review); nothing here.
-- beffroi-php/beffroi#732: the judge, a SimpleSAMLphp service provider played against the stack. Its walk expects the single sign-on service to send the browser to `{issuer}/login?`, a query after the path, where the browser is sent to `{issuer}/login`, the login every page of the provider that is not an authorization request sends it to (S-18): the walk reads the path, and the `?` goes.
+- beffroi-php/beffroi#732: the judge, a SimpleSAMLphp service provider played against the stack.
 - beffroi-php/beffroi#733: the assertion encrypted for a service provider that asks for it, and `Enc` in the edges of section 2.
 - beffroi-php/beffroi#734 and beffroi-php/beffroi#735: Single Logout, started by a service provider and by the identity provider, the session of the core as the pivot, the replay store of section 6.8.
 - beffroi-php/beffroi#736: the Entra judge.
