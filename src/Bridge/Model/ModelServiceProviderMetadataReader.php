@@ -48,7 +48,7 @@ final readonly class ModelServiceProviderMetadataReader implements ServiceProvid
             throw new MetadataRefusedException($exception->getMessage(), 0, $exception);
         }
 
-        return self::metadataOf($descriptor);
+        return self::metadataOf($descriptor, self::role($descriptor));
     }
 
     public function readSigned(string $document, array $signers): ServiceProviderMetadata
@@ -71,25 +71,49 @@ final readonly class ModelServiceProviderMetadataReader implements ServiceProvid
             throw new MetadataRefusedException('Signed metadata carry a validUntil, without which an older document signed by the same key verifies as well (spec/saml.md S-6).');
         }
 
-        return self::metadataOf($descriptor);
+        return self::metadataOf($descriptor, self::role($descriptor));
+    }
+
+    /**
+     * The accepted document of a service provider read back once (spec/saml.md section 6.3 step 1), with readTrusted(),
+     * the channel being its own sealed store: what the signature of its requests needs, and the model's role, which
+     * validates them and holds the assertion consumer services an answer goes to (S-10).
+     *
+     * @throws MetadataRefusedException
+     */
+    public function readAccepted(string $document): ReadServiceProvider
+    {
+        try {
+            $descriptor = $this->reader->readTrusted($this->loader->load($document));
+        } catch (RefusedXml $exception) {
+            throw new MetadataRefusedException($exception->getMessage(), 0, $exception);
+        }
+        $role = self::role($descriptor);
+
+        return new ReadServiceProvider(self::metadataOf($descriptor, $role), $role);
     }
 
     /**
      * @throws MetadataRefusedException
      */
-    private static function metadataOf(EntityDescriptor $descriptor): ServiceProviderMetadata
+    private static function role(EntityDescriptor $descriptor): ServiceProvider
     {
-        if (! $descriptor->serviceProvider instanceof ServiceProvider) {
-            throw new MetadataRefusedException('The metadata hold no service provider role of SAML 2.0 (spec/saml.md S-5).');
-        }
+        return $descriptor->serviceProvider ?? throw new MetadataRefusedException('The metadata hold no service provider role of SAML 2.0 (spec/saml.md S-5).');
+    }
+
+    /**
+     * @throws MetadataRefusedException
+     */
+    private static function metadataOf(EntityDescriptor $descriptor, ServiceProvider $role): ServiceProviderMetadata
+    {
         try {
             $encryptionCertificates = array_map(
                 static fn (string $base64): Certificate => new Certificate($base64),
-                $descriptor->serviceProvider->encryptionCertificates,
+                $role->encryptionCertificates,
             );
             $signingCertificates = array_map(
                 static fn (string $base64): Certificate => new Certificate($base64),
-                $descriptor->serviceProvider->signingCertificates,
+                $role->signingCertificates,
             );
         } catch (InvalidArgumentException $exception) {
             throw new MetadataRefusedException($exception->getMessage(), 0, $exception);
@@ -99,7 +123,7 @@ final readonly class ModelServiceProviderMetadataReader implements ServiceProvid
             $descriptor->entityId,
             $descriptor->validUntil,
             $encryptionCertificates,
-            $descriptor->serviceProvider->authnRequestsSigned,
+            $role->authnRequestsSigned,
             $signingCertificates,
         );
     }

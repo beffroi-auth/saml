@@ -11,18 +11,14 @@ use Beffroi\Core\Exception\RuntimeException;
 use Beffroi\Saml\Domain\Key\SamlSigningAlgorithmInterface;
 use Beffroi\Saml\Domain\Metadata\Certificate;
 use Beffroi\Saml\Port\CertificateIssuerInterface;
-use function base64_decode;
 use function base64_encode;
 use DateTimeImmutable;
 use function hash;
-use function hash_equals;
 use function is_string;
 use function openssl_pkey_export;
-use function openssl_pkey_new;
 use function openssl_verify;
 use function ord;
 use OpenSSLAsymmetricKey;
-use SensitiveParameter;
 use function sprintf;
 use function str_split;
 use SpomkyLabs\Pki\ASN1\Type\Primitive\NullType;
@@ -36,7 +32,6 @@ use SpomkyLabs\Pki\X509\Certificate\Extensions;
 use SpomkyLabs\Pki\X509\Certificate\TBSCertificate;
 use SpomkyLabs\Pki\X509\Certificate\Time;
 use SpomkyLabs\Pki\X509\Certificate\Validity;
-use function strtr;
 use function substr;
 use Throwable;
 
@@ -50,7 +45,7 @@ use Throwable;
  *
  * It is verified under its own public key before it is returned, the result of openssl_verify() compared to 1 and
  * never to a boolean: the function answers -1 on an error, which PHP holds for true. The private half is turned into
- * a key of OpenSSL in memory for that one signature and goes out of scope with it (S-1).
+ * a key of OpenSSL in memory for that one signature (RsaPrivateKey) and goes out of scope with it (S-1).
  */
 final readonly class SelfSignedCertificateIssuer implements CertificateIssuerInterface
 {
@@ -59,20 +54,6 @@ final readonly class SelfSignedCertificateIssuer implements CertificateIssuerInt
      * its status, and a certificate in metadata is the notation of a key (Metadata Interoperability Profile §2.6.1).
      */
     public const string NOT_AFTER = '9999-12-31T23:59:59Z';
-
-    /**
-     * The members of a private RSA JWK (RFC 7518 §6.3.2), by the name OpenSSL gives each.
-     */
-    private const array PRIVATE_MEMBERS = [
-        'n' => 'n',
-        'e' => 'e',
-        'd' => 'd',
-        'p' => 'p',
-        'q' => 'q',
-        'dp' => 'dmp1',
-        'dq' => 'dmq1',
-        'qi' => 'iqmp',
-    ];
 
     public function selfSigned(UnsealedKey $key): Certificate
     {
@@ -84,7 +65,7 @@ final readonly class SelfSignedCertificateIssuer implements CertificateIssuerInt
                 $tenantKey->algorithm->name(),
             ));
         }
-        $private = self::privateKey($tenantKey, $key->privateJwk);
+        $private = RsaPrivateKey::of($key);
 
         try {
             $certificate = self::sign($tenantKey, $private);
@@ -105,61 +86,6 @@ final readonly class SelfSignedCertificateIssuer implements CertificateIssuerInt
         }
 
         return new Certificate(base64_encode($der));
-    }
-
-    /**
-     * The private half as a key of OpenSSL, its modulus and its exponent first compared with those of the public JWK
-     * the metadata publishes, so that nothing is signed with a key that is not that one.
-     *
-     * @param array<string, string> $privateJwk
-     *
-     * @throws InvalidArgumentException
-     */
-    private static function privateKey(TenantKey $key, #[SensitiveParameter] array $privateJwk): OpenSSLAsymmetricKey
-    {
-        $components = [];
-        foreach (self::PRIVATE_MEMBERS as $member => $component) {
-            $components[$component] = self::bytes($key, $privateJwk, $member);
-        }
-        foreach (['n', 'e'] as $member) {
-            if (! hash_equals(self::bytes($key, $key->publicJwk, $member), $components[$member])) {
-                throw new InvalidArgumentException(sprintf(
-                    'The private half of the key "%s" is not the one of its public JWK: its "%s" differs (spec/saml.md section 6.1 step 2).',
-                    $key->kid,
-                    $member,
-                ));
-            }
-        }
-        $private = openssl_pkey_new([
-            'rsa' => $components,
-        ]);
-        if (! $private instanceof OpenSSLAsymmetricKey) {
-            throw new InvalidArgumentException(sprintf('The private half of the key "%s" is not an RSA key OpenSSL takes.', $key->kid));
-        }
-
-        return $private;
-    }
-
-    /**
-     * One member of a JWK, a base64url string without padding (RFC 7518 §6.3), as bytes.
-     *
-     * @param array<string, string> $jwk
-     *
-     * @throws InvalidArgumentException
-     */
-    private static function bytes(TenantKey $key, #[SensitiveParameter] array $jwk, string $member): string
-    {
-        $value = $jwk[$member] ?? '';
-        $bytes = base64_decode(strtr($value, '-_', '+/'), true);
-        if (! is_string($bytes) || $bytes === '') {
-            throw new InvalidArgumentException(sprintf(
-                'The member "%s" of the key "%s" is not a base64url integer of RFC 7518 section 6.3.',
-                $member,
-                $key->kid,
-            ));
-        }
-
-        return $bytes;
     }
 
     /**

@@ -1,0 +1,126 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Beffroi\Saml\Bridge\Model;
+
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Saml\Domain\ServiceProvider\AuthnRequestSigning;
+use Beffroi\Saml\Domain\SingleSignOn\SignOnRequest;
+use Beffroi\Saml\Exception\MetadataRefusedException;
+use Beffroi\Saml\Exception\SignOnRefusedException;
+use Beffroi\Saml\Port\AcceptedMetadataRepositoryInterface;
+use Beffroi\Saml\Port\AuthnRequestReceiverInterface;
+use Beffroi\Saml\Port\IdentityProviderEndpointsInterface;
+use Beffroi\Saml\Port\ServiceProvidersInterface;
+use Beffroi\Saml2\Bindings\PostReceiver;
+use Beffroi\Saml2\Bindings\ReceivedAuthnRequest;
+use Beffroi\Saml2\Bindings\RedirectReceiver;
+use Beffroi\Saml2\Model\Protocol\RequestedAuthnContext;
+use Beffroi\Saml2\Model\SamlLoader;
+use Beffroi\Saml2\Model\Validation\AuthnRequestValidator;
+use Beffroi\Xml\Core\Exception\RefusedXml;
+use Psr\Clock\ClockInterface;
+
+/**
+ * An authentication request received over HTTP-Redirect or HTTP-POST and validated by saml2-model (spec/saml.md
+ * section 6.3, section 6.4 step 1): decoded by the receiver of its binding, its service provider chosen by its
+ * unverified Issuer among the declarations of the tenant, the accepted document of that provider read back once, the
+ * signature its requests need (S-9), the two parties validate() is handed, never the identity provider the metadata
+ * publish, and the URL of the single sign-on service of the tenant as the URL of arrival (section 6.8). One loader,
+ * SamlLoader's, decodes and validates (M-14).
+ *
+ * What the binding, the model, Core or Dsig refuse, and a service provider nobody declared or registered, is a
+ * SignOnRefusedException carrying the message of the rule, which names no value (M-16, B-11): the endpoint of the
+ * request is not established, so it gets no SAML answer.
+ */
+final readonly class ModelAuthnRequestReceiver implements AuthnRequestReceiverInterface
+{
+    private RedirectReceiver $redirect;
+
+    private PostReceiver $post;
+
+    private AuthnRequestValidator $validator;
+
+    public function __construct(
+        private ServiceProvidersInterface $serviceProviders,
+        private AcceptedMetadataRepositoryInterface $accepted,
+        private ModelServiceProviderMetadataReader $reader,
+        private IdentityProviderEndpointsInterface $endpoints,
+        private ClockInterface $clock,
+    ) {
+        $loader = SamlLoader::create();
+        $this->redirect = new RedirectReceiver($loader);
+        $this->post = new PostReceiver($loader);
+        $this->validator = new AuthnRequestValidator($loader, $clock);
+    }
+
+    public function redirect(Tenant $tenant, string $queryString): SignOnRequest
+    {
+        try {
+            $received = $this->redirect->authnRequest($queryString);
+        } catch (RefusedXml $exception) {
+            throw new SignOnRefusedException($exception->getMessage(), 0, $exception);
+        }
+
+        return $this->validated($tenant, $received);
+    }
+
+    public function post(Tenant $tenant, array $fields): SignOnRequest
+    {
+        try {
+            $received = $this->post->authnRequest($fields);
+        } catch (RefusedXml $exception) {
+            throw new SignOnRefusedException($exception->getMessage(), 0, $exception);
+        }
+
+        return $this->validated($tenant, $received);
+    }
+
+    /**
+     * Section 6.3 in order.
+     *
+     * @throws SignOnRefusedException
+     */
+    private function validated(Tenant $tenant, ReceivedAuthnRequest $received): SignOnRequest
+    {
+        $issuer = $received->request->issuer;
+        $declaration = $issuer === null ? null : $this->serviceProviders->find($tenant, $issuer);
+        if ($declaration === null) {
+            throw new SignOnRefusedException('The Issuer of the request is no service provider this tenant declares (spec/saml.md section 6.3 step 1).');
+        }
+        $accepted = $this->accepted->find($tenant, $declaration->entityId);
+        if ($accepted === null) {
+            throw new SignOnRefusedException('The service provider of the request has no metadata accepted yet (spec/saml.md section 6.3 step 1).');
+        }
+        try {
+            $read = $this->reader->readAccepted($accepted->document);
+        } catch (MetadataRefusedException $exception) {
+            throw new SignOnRefusedException($exception->getMessage(), 0, $exception);
+        }
+        $endpoints = $this->endpoints->locate($tenant);
+        $parties = new ModelAuthnRequestParties(
+            AuthnRequestSigning::of($declaration, $read->metadata),
+            $read->role,
+            ModelIdentityProvider::of($endpoints, [], false),
+        );
+        try {
+            $validated = $received->validate($this->validator, $parties->serviceProvider, $parties->identityProvider, $endpoints->singleSignOn);
+        } catch (RefusedXml $exception) {
+            throw new SignOnRefusedException($exception->getMessage(), 0, $exception);
+        }
+        $request = $validated->request;
+
+        return new SignOnRequest(
+            $declaration->entityId,
+            $request->id,
+            $validated->assertionConsumerService->location,
+            $received->relayState,
+            $request->forceAuthn,
+            $request->isPassive,
+            $request->nameIdPolicy?->format,
+            $request->requestedAuthnContext instanceof RequestedAuthnContext,
+            $this->clock->now(),
+        );
+    }
+}
