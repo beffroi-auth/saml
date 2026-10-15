@@ -291,7 +291,7 @@ The figures of the SAML key are those its family declares (S-12); the rest of th
 
 **How the rules read a call** (`tests/saml/PhpStan/`). `BannedCallsRule` reads the name of every function, method and class called, as resolved, whatever its case. A function, a method or a class given as a value is read as PHPStan knows it: a constant string (`'unserialize'`, `'Closure::bind'`) or a constant callable array (`[$validator, 'validateAuthenticatedByBinding']`) naming one of the above is that call, as the callee and as an argument of any call, so that one handed to `array_map()`, `call_user_func()` or `Closure::fromCallable()` is refused where it is written; a call whose function, method or class is a value PHPStan cannot read is refused, a `Closure` called as a value let through. `BannedCallablesRule` hands it the call a first-class callable is made of (`unserialize(...)`, `Closure::bind(...)`), which PHPStan visits as a node of its own (issue #693, closed for these rules as `saml2-bindings` closes it for its own). Not seen: a callable whose value PHPStan cannot read, handed to a function that calls it.
 
-**Proven** on a probe of `src/` written for the purpose and removed once read, as the rules of the other SAML packages were: each form above refused with its message, a control class that uses none of them accepted; the commit that brought the rules records the run.
+**Proven** by a fixture, run by `castor phpstan-saml-rules` (and by `castor phpstan`, hence by the CI, after the five analyses). `tests/saml/PhpStan/Fixture/BannedForms.php` holds one line for each form the rules read, the function, the method on any receiver, the nullsafe call, the `Closure` methods statically and on an instance, each class of the Reflection API instantiated, called statically or reached by a method, a class extending one (named or anonymous), a function, a method or a class given as a constant string, an array or a class-string, the same handed to `array_map()`, `call_user_func()` or `Closure::fromCallable()`, a first-class callable of each kind, and a callee, a method or a class PHPStan cannot read; each ends in a `// error: <message>` marker saying what it must be refused with. The lines with no marker are the ones that must pass: a `Closure` called as a value, `Closure::fromCallable()` of a name that is not banned, a method named `bind` or `call` on a class that is not `Closure`, `ReflectionException`. The fixture is analysed by the rules of `.ci-tools/phpstan-saml.neon` and by nothing else (`.ci-tools/phpstan-saml-rules.neon` includes it and points it at the fixture, which it excludes from its own analysis, from the suite, from the formatter, from Rector and from the classmap), and the task compares the reported refusals (identifier `beffroi.bannedCall`) to the markers, line and message: it fails on a refusal that is missing, which is a rule that stopped firing, and on one nobody expected, which is a rule that fires on what it let through, or a line that moved. It reads no other message of PHPStan about the fixture, except those that say the fixture could not be read. A new form of a ban is a new line of the fixture, in the commit that adds it.
 
 Every other refusal of the module, of a message, a metadata document, a request or a configuration, is the rule of the story that builds it (section 12).
 
@@ -350,12 +350,15 @@ src/saml/              the package, what the mirror carries
   README.md            the short version of this document
   spec/saml.md         this document, the law of the package
   src/                 Domain/, Exception/, Port/, Application/, Bridge/ (section 2), from the first class
-tests/saml/            PhpStan/: the rules of section 8 (BannedCallsRule, BannedCallablesRule); Unit/: the suite of
+tests/saml/            PhpStan/: the rules of section 8 (BannedCallsRule, BannedCallablesRule) and Fixture/, the line
+                       of each form they refuse and the lines they let through (castor phpstan-saml-rules); Unit/: the suite of
                        the package, the testsuite saml of .ci-tools/phpunit.xml.dist (section 9)
 at the root            the toolchain of the monorepo:
   composer.json        beffroi/saml replaced at self.version, Beffroi\Saml\ and Beffroi\Saml\Tests\ autoloaded
-  .castor/             stack/qa.php: phpstan runs .ci-tools/phpstan-saml.neon after the other configurations
-  .ci-tools/           phpstan-saml.neon (level max, no baseline, strict rules, deprecation rules, phpunit, the bans
+  .castor/             stack/qa.php: phpstan runs .ci-tools/phpstan-saml.neon after the other configurations, then
+                       phpstan-saml-rules, the proof of the bans on their fixture
+  .ci-tools/           phpstan-saml-rules.neon (the same rules on the fixture alone),
+                       phpstan-saml.neon (level max, no baseline, strict rules, deprecation rules, phpunit, the bans
                        of section 8), deptrac.yaml (the Saml* layers of section 2), phpunit.xml.dist
   .github/workflows/   ci.yml: the analysis of section 8 and Deptrac in the quality job, its result cache kept;
                        gitsplit.yml, which pushes the mirror
