@@ -1,0 +1,38 @@
+{
+    "name": "beffroi/saml",
+    "description": "SAML 2.0 module of the IdP: the profile on top of beffroi/saml2-model and beffroi/saml2-bindings, the identity provider and the service provider of a tenant, their metadata, the attributes mapped from the claims, a NameID derived from the sub, Single Logout on the session of the core. Pure PHP.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": [
+        "saml",
+        "saml2",
+        "sso",
+        "single-sign-on",
+        "single-logout",
+        "identity-provider",
+        "service-provider"
+    ],
+    "authors": [
+        {
+            "name": "All contributors"
+        }
+    ],
+    "require": {
+        "php": ">=8.4",
+        "beffroi/core": "self.version",
+        "beffroi/saml2-bindings": "self.version",
+        "beffroi/saml2-model": "self.version",
+        "beffroi/xml-security": "self.version",
+        "spomky-labs/pki-framework": "^1.2.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "Beffroi\\Saml\\": "src/"
+        }
+    },
+    "extra": {
+        "thanks": {
+            "name": "beffroi/framework"
+        }
+    }
+}
