@@ -21,7 +21,10 @@ URL, trusted by that channel or verified under pinned certificates, refused when
 accepted, and refused when they ask for encryption without a key for it; and the signature the authentication requests
 of a service provider need, required unless its declaration says it does not sign and its metadata do not say it
 does, whatever the tenant announces, the assertion going only to an assertion consumer service of its accepted
-metadata.
+metadata; and single sign-on: a request received over HTTP-Redirect or HTTP-POST, answered from the session of the
+core or after its login, with a response and an assertion both signed by the key of the tenant, valid five minutes,
+addressed to that request, carrying a persistent `NameID` of its own per service provider and the attributes its
+declaration maps from the claims the provider serves.
 
 The package requires PHP 8.4 or later, `beffroi/core`, `beffroi/saml2-model`, `beffroi/saml2-bindings`,
 `beffroi/xml-security` and `spomky-labs/pki-framework`.
