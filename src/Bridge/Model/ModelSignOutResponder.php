@@ -25,7 +25,8 @@ use InvalidArgumentException;
 /**
  * The answer to a LogoutRequest written with saml2-model's objects and sent through saml2-bindings (spec/saml.md
  * section 6.5 step 4, S-27): a LogoutResponse of a new ID to the single logout service resolved when the request was
- * received, its InResponseTo the ID of the request, its Issuer the entity ID of the tenant, its Status the one of S-24;
+ * received, its InResponseTo the ID of the request, its Issuer the entity ID of the tenant, its Status the one of S-24
+ * or of S-34;
  * signed by the active SAML key of the tenant under RSA-SHA256 (TenantSigning), over the query string by RedirectSender
  * for HTTP-Redirect, in its XML by PostSender for HTTP-POST; the RelayState received handed back as it is. The key is
  * opened by open() before the request is read (section 6.5 step 1), the core holding it open for the process, so that
@@ -51,15 +52,15 @@ final readonly class ModelSignOutResponder implements SignOutResponderInterface
 
     public function answer(Tenant $tenant, SignOutResponse $response): PostedForm|RedirectedMessage
     {
-        $request = $response->request;
+        $requester = $response->requester;
         $status = $response->status;
         $secondLevel = $status->secondLevel();
         $message = new LogoutResponse(
             SamlId::generate(),
             $response->issuedAt,
             new Issuer($response->identityProvider),
-            $request->answerLocation,
-            $request->id,
+            $requester->answerLocation,
+            $requester->requestId,
             new Status(
                 StatusCode::fromUri($status->topLevel()),
                 $secondLevel === null ? null : SecondLevelStatusCode::tryFromUri($secondLevel),
@@ -67,10 +68,10 @@ final readonly class ModelSignOutResponder implements SignOutResponderInterface
         );
         try {
             $signing = $this->signing->of($tenant);
-            if (Binding::from($request->answerBinding) === Binding::HttpRedirect) {
-                return new RedirectedMessage($this->redirect->logoutResponse($message, $signing, $request->relayState));
+            if (Binding::from($requester->answerBinding) === Binding::HttpRedirect) {
+                return new RedirectedMessage($this->redirect->logoutResponse($message, $signing, $requester->relayState));
             }
-            $form = $this->post->logoutResponse($message, $signing, $request->relayState);
+            $form = $this->post->logoutResponse($message, $signing, $requester->relayState);
         } catch (RefusedXml|InvalidArgumentException $exception) {
             throw new RuntimeException('The answer of single logout is one its own reader refuses (spec/saml.md section 6.5 step 4).', 0, $exception);
         }

@@ -13,7 +13,10 @@ use Beffroi\Core\Exception\KeyNotFoundException;
 use Beffroi\Core\Exception\KmsUnavailableException;
 use Beffroi\Core\Exception\RuntimeException;
 use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
+use Beffroi\Saml\Domain\SingleLogout\LogoutChainEnded;
+use Beffroi\Saml\Domain\SingleLogout\LogoutChainStarted;
 use Beffroi\Saml\Domain\SingleLogout\RedirectedMessage;
+use Beffroi\Saml\Domain\SingleLogout\SignOutAnswer;
 use Beffroi\Saml\Domain\SingleLogout\SignOutRequest;
 use Beffroi\Saml\Domain\SingleLogout\SignOutResponse;
 use Beffroi\Saml\Domain\SingleLogout\SignOutStatus;
@@ -21,7 +24,7 @@ use Beffroi\Saml\Domain\SingleSignOn\PersistentNameId;
 use Beffroi\Saml\Domain\SingleSignOn\PostedForm;
 use Beffroi\Saml\Exception\LogoutRefusedException;
 use Beffroi\Saml\Port\IdentityProviderEndpointsInterface;
-use Beffroi\Saml\Port\LogoutRequestReceiverInterface;
+use Beffroi\Saml\Port\LogoutMessageReceiverInterface;
 use Beffroi\Saml\Port\PersistentIdentifierSaltInterface;
 use Beffroi\Saml\Port\SignOutResponderInterface;
 use function hash_equals;
@@ -29,39 +32,41 @@ use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Single Logout started by a service provider, from the request the bundle received to the answer the browser
- * carries back (spec/saml.md section 6.5): the key that signs the answer opened first, then the request accepted, once
- * (S-22, S-23), the sessions it names ended when their user is the principal it names (S-24), as every session of the
- * core ends (S-25), and the answer written to the single logout service of the accepted metadata of the service
- * provider (S-27). A key that cannot be opened ends nothing and remembers nothing, so that the same request is accepted
- * once the key or the KMS is back.
+ * The single logout service of the tenant, from the message the bundle received to what the browser is given (spec/
+ * saml.md section 6.5): the key that signs the answer opened first, then a request of a service provider accepted,
+ * once (S-22, S-23), the sessions it names ended when their user is the principal it names (S-24), as every session of
+ * the core ends (S-25), then the other service providers of those sessions told before the answer is written to the
+ * single logout service of the accepted metadata of the service provider that asked (S-27, S-34); or the answer of a
+ * service provider a chain waits for, handed to the chain (section 6.6 step 4). A key that cannot be opened ends
+ * nothing and remembers nothing, so that the same message is accepted once the key or the KMS is back.
  */
 final readonly class SingleLogout
 {
     public function __construct(
-        private LogoutRequestReceiverInterface $receiver,
+        private LogoutMessageReceiverInterface $receiver,
         private SignOutResponderInterface $responder,
         private AuthenticationSessionRepositoryInterface $sessions,
         private SessionTerminator $terminator,
         private PersistentIdentifierSaltInterface $salts,
         private IdentityProviderEndpointsInterface $endpoints,
         private ClockInterface $clock,
+        private ProviderLogout $chains,
     ) {
     }
 
     /**
      * @param string $queryString the raw query string (section 6.8)
      *
-     * @throws LogoutRefusedException when the request is refused: no session ended, no SAML answer
+     * @throws LogoutRefusedException when the message is refused: no session ended, no SAML answer
      * @throws KeyNotFoundException when the tenant holds no active SAML key: nothing read, ended or remembered
      * @throws KmsUnavailableException when the KMS does not answer
      * @throws RuntimeException when the salt of the tenant can neither be read nor drawn
      */
-    public function redirect(Tenant $tenant, string $queryString, RequestContext $context): PostedForm|RedirectedMessage
+    public function redirect(Tenant $tenant, string $queryString, RequestContext $context): PostedForm|RedirectedMessage|LogoutChainStarted|LogoutChainEnded
     {
         $this->responder->open($tenant);
 
-        return $this->answer($tenant, $this->receiver->redirect($tenant, $queryString), $context);
+        return $this->handle($tenant, $this->receiver->redirect($tenant, $queryString), $context);
     }
 
     /**
@@ -72,33 +77,55 @@ final readonly class SingleLogout
      * @throws KmsUnavailableException
      * @throws RuntimeException
      */
-    public function post(Tenant $tenant, array $fields, RequestContext $context): PostedForm|RedirectedMessage
+    public function post(Tenant $tenant, array $fields, RequestContext $context): PostedForm|RedirectedMessage|LogoutChainStarted|LogoutChainEnded
     {
         $this->responder->open($tenant);
 
-        return $this->answer($tenant, $this->receiver->post($tenant, $fields), $context);
+        return $this->handle($tenant, $this->receiver->post($tenant, $fields), $context);
     }
 
     /**
-     * Section 6.5 steps 2 to 4.
+     * @throws LogoutRefusedException when the chain an answer is for was played by another request (S-32)
+     * @throws KeyNotFoundException
+     * @throws KmsUnavailableException
+     * @throws RuntimeException
+     */
+    private function handle(
+        Tenant $tenant,
+        SignOutRequest|SignOutAnswer $received,
+        RequestContext $context,
+    ): PostedForm|RedirectedMessage|LogoutChainStarted|LogoutChainEnded {
+        if ($received instanceof SignOutAnswer) {
+            return $this->chains->answered($tenant, $received);
+        }
+
+        return $this->answer($tenant, $received, $context);
+    }
+
+    /**
+     * Section 6.5 steps 2 to 4: the answer written at once when no session ended, after the chain otherwise (S-34).
      *
      * @throws KeyNotFoundException
      * @throws KmsUnavailableException
      * @throws RuntimeException
      */
-    private function answer(Tenant $tenant, SignOutRequest $request, RequestContext $context): PostedForm|RedirectedMessage
+    private function answer(Tenant $tenant, SignOutRequest $request, RequestContext $context): PostedForm|RedirectedMessage|LogoutChainStarted
     {
         $now = $this->clock->now();
         $identityProvider = $this->endpoints->locate($tenant)->metadata;
         $named = $this->named($tenant, $request);
         $status = $this->status($tenant, $identityProvider, $request, $named);
-        if ($status === SignOutStatus::Success) {
+        if ($status === SignOutStatus::Success && $named !== []) {
             foreach ($named as $session) {
                 $this->terminator->end($session, SessionEnd::RelyingParty, $context);
             }
+            $started = $this->chains->begin($tenant, $named, $request->requester(), null);
+            if ($started instanceof LogoutChainStarted) {
+                return $started;
+            }
         }
 
-        return $this->responder->answer($tenant, new SignOutResponse($identityProvider, $request, $status, $now));
+        return $this->responder->answer($tenant, new SignOutResponse($identityProvider, $request->requester(), $status, $now));
     }
 
     /**

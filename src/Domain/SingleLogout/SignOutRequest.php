@@ -30,4 +30,12 @@ final readonly class SignOutRequest
         public string $answerLocation,
     ) {
     }
+
+    /**
+     * What its answer is written from (S-27), and kept while the other service providers are told (S-34).
+     */
+    public function requester(): LogoutRequester
+    {
+        return new LogoutRequester($this->serviceProvider, $this->id, $this->relayState, $this->answerBinding, $this->answerLocation);
+    }
 }
