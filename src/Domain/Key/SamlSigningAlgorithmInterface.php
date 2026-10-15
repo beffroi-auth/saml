@@ -17,7 +17,23 @@ use Beffroi\Core\Domain\Key\KeyAlgorithmInterface;
  * It names itself rather than naming a JOSE algorithm, as the keys the tenant keeps do: a tenant holds one active key
  * per algorithm, and a SAML key answering to the name of a JWS algorithm would be one pair doing two jobs. Its key
  * type is RSA, the only key Dsig takes (D-16); which XML signature algorithm it signs under is the message's.
+ *
+ * Its keys are a family of their own (S-12, section 7): a service provider reads the metadata once a day at best, and
+ * one that holds a certificate an administrator uploaded reads nothing, so a key of this family is published days
+ * before it signs and works a year. The two constants are the default figures of the family, which a deployment may
+ * set otherwise.
  */
 interface SamlSigningAlgorithmInterface extends KeyAlgorithmInterface
 {
+    /**
+     * How long a staged SAML key is published before it signs, in seconds: seven days, seven times the cacheDuration
+     * of the metadata and a calendar week for an administrator who uploads certificates (section 7).
+     */
+    public const int STAGING_DELAY = 604_800;
+
+    /**
+     * How long a SAML key works before a successor is staged for it, in seconds: 365 days, every rotation of it being
+     * a step for whoever pinned its certificate (section 7).
+     */
+    public const int AGE = 31_536_000;
 }

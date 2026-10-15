@@ -20,7 +20,8 @@ use function array_map;
  * (spec/saml.md section 6.1 steps 3 to 5): one md:EntityDescriptor whose entity ID is the URL of the metadata, one
  * md:IDPSSODescriptor holding a signing certificate per key in service, the single sign-on and the single logout
  * services each listed with HTTP-Redirect then HTTP-POST at one URL, and WantAuthnRequestsSigned as the tenant set it,
- * which IdentityProvider's constructor would otherwise default to false (model.md section 6.9).
+ * which IdentityProvider's constructor would otherwise default to false (model.md section 6.9), and the cacheDuration
+ * of S-12 on the md:EntityDescriptor.
  *
  * Unsigned: the key that would sign it is a key it publishes, so a service provider trusts it by the channel it came
  * through. No validUntil, no encryption certificate (issue #733) and no NameIDFormat (issue #731).
@@ -50,6 +51,7 @@ final readonly class ModelMetadataWriter implements MetadataWriterInterface
                     self::bothBindings($endpoints->singleLogout),
                     wantAuthnRequestsSigned: $description->wantAuthnRequestsSigned,
                 ),
+                cacheDuration: $description->cacheDuration,
             ),
             null,
         ));
