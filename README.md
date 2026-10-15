@@ -46,6 +46,7 @@ From the root of the monorepo, which holds the toolchain of every package:
 composer install
 castor prepare-pr                                # Mago lint and format, Rector, PHPStan, Deptrac
 castor phpstan                                   # this package under .ci-tools/phpstan-saml.neon: level max, no baseline, the bans of section 8
+castor phpstan-saml-rules                        # the bans of section 8 proven: one line of the fixture per banned form, compared to what PHPStan reports
 castor deptrac                                   # the layers of section 2 and the graph of the packages
 ```
 
