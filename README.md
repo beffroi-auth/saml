@@ -13,7 +13,9 @@ bundle's.
 
 [`spec/saml.md`](spec/saml.md) is the law of the package: the code conforms to it, or the document changes first.
 This file is its short version. The package is being built by sub-spike 9c, the identity provider role
-([beffroi-php/beffroi#645](https://github.com/beffroi-php/beffroi/issues/645)), and holds no class yet.
+([beffroi-php/beffroi#645](https://github.com/beffroi-php/beffroi/issues/645)): it holds the identity provider of a
+tenant so far, its signing key, kept by the KMS as every key of the tenant, the self-signed certificate around that
+key and the metadata that publishes it, the next key's certificate beside the current one before it signs anything.
 
 The package requires PHP 8.4 or later, `beffroi/core`, `beffroi/saml2-model`, `beffroi/saml2-bindings`,
 `beffroi/xml-security` and `spomky-labs/pki-framework`.
