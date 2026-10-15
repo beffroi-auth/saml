@@ -17,7 +17,8 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * The newest metadata document accepted for a service provider of a tenant (spec/saml.md S-6, S-8): the bytes as they
- * were read, never written again, their `validUntil`, null when they carry none, and the instant they were accepted.
+ * were read, never written again, their `validUntil` to the second, null when they carry none, and the instant they
+ * were accepted.
  * One per service provider of a tenant, by its entity ID.
  *
  * The rule against a rollback is this row's own (section 6.2 step 6): a document is older than the accepted one when
@@ -46,6 +47,7 @@ final class AcceptedMetadata implements ClassifiedFieldsInterface
         if ($document === '') {
             throw new InvalidArgumentException('An accepted metadata document holds the bytes that were read (spec/saml.md S-8).');
         }
+        $this->validUntil = self::toTheSecond($validUntil);
     }
 
     /**
@@ -77,8 +79,17 @@ final class AcceptedMetadata implements ClassifiedFieldsInterface
             throw new InvalidArgumentException('An accepted metadata document holds the bytes that were read (spec/saml.md S-8).');
         }
         $this->document = $document;
-        $this->validUntil = $metadata->validUntil;
+        $this->validUntil = self::toTheSecond($metadata->validUntil);
         $this->acceptedAt = $at;
+    }
+
+    /**
+     * The validUntil to the second, as its column keeps it: a document read again whose validUntil has a fraction of
+     * a second is not older than the one kept without it.
+     */
+    private static function toTheSecond(?DateTimeImmutable $instant): ?DateTimeImmutable
+    {
+        return $instant?->setTime((int) $instant->format('G'), (int) $instant->format('i'), (int) $instant->format('s'));
     }
 
     /**
