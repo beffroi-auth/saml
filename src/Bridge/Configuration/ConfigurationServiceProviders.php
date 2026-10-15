@@ -1,0 +1,161 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Beffroi\Saml\Bridge\Configuration;
+
+use function array_values;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Saml\Domain\Metadata\Certificate;
+use Beffroi\Saml\Domain\ServiceProvider\AttributeMapping;
+use Beffroi\Saml\Domain\ServiceProvider\AttributeNameFormat;
+use Beffroi\Saml\Domain\ServiceProvider\MetadataLocation;
+use Beffroi\Saml\Domain\ServiceProvider\ServiceProvider;
+use Beffroi\Saml\Port\ServiceProvidersInterface;
+use function is_array;
+use function is_bool;
+use function is_string;
+use function sprintf;
+
+/**
+ * The service providers declared in the configuration of the deployment (spec/saml.md S-5, section 5.2), keyed by
+ * entity ID, validated when the deployment boots (section 6.2 step 1): a declaration that does not hold together
+ * fails there, naming the service provider, rather than at its first refresh. They are those of one tenant, named by
+ * its slug, as the clients of the configuration are.
+ */
+final readonly class ConfigurationServiceProviders implements ServiceProvidersInterface
+{
+    /**
+     * @var array<string, ServiceProvider>
+     */
+    private array $serviceProviders;
+
+    /**
+     * @param array<array-key, mixed> $definitions by entity ID: metadata, metadata_signers, attributes keyed by
+     *                                             attribute name (claim, name_format, friendly_name),
+     *                                             encrypt_assertions, signs_authn_requests
+     *
+     * @throws InvalidArgumentException when a declaration does not hold together
+     */
+    public function __construct(
+        private string $tenantSlug,
+        array $definitions,
+    ) {
+        $serviceProviders = [];
+        foreach ($definitions as $entityId => $definition) {
+            $entityId = (string) $entityId;
+            try {
+                $serviceProviders[$entityId] = self::serviceProvider($entityId, $definition);
+            } catch (InvalidArgumentException $exception) {
+                throw new InvalidArgumentException(sprintf('The service provider "%s": %s', $entityId, $exception->getMessage()), 0, $exception);
+            }
+        }
+        $this->serviceProviders = $serviceProviders;
+    }
+
+    public function of(Tenant $tenant): array
+    {
+        return $tenant->slug === $this->tenantSlug ? array_values($this->serviceProviders) : [];
+    }
+
+    public function find(Tenant $tenant, string $entityId): ?ServiceProvider
+    {
+        return $tenant->slug === $this->tenantSlug ? $this->serviceProviders[$entityId] ?? null : null;
+    }
+
+    /**
+     * @throws InvalidArgumentException
+     */
+    private static function serviceProvider(string $entityId, mixed $definition): ServiceProvider
+    {
+        if (! is_array($definition)) {
+            throw new InvalidArgumentException('a declaration is a map (spec/saml.md section 5.2).');
+        }
+        $signers = [];
+        foreach (self::list($definition, 'metadata_signers') as $signer) {
+            $signers[] = new Certificate(self::string($signer, 'metadata_signers'));
+        }
+        $attributes = [];
+        foreach (self::map($definition, 'attributes') as $name => $attribute) {
+            $attributes[] = self::attribute((string) $name, $attribute);
+        }
+
+        return new ServiceProvider(
+            $entityId,
+            new MetadataLocation(self::string($definition['metadata'] ?? null, 'metadata')),
+            $signers,
+            $attributes,
+            self::boolean($definition, 'encrypt_assertions', false),
+            self::boolean($definition, 'signs_authn_requests', true),
+        );
+    }
+
+    /**
+     * @throws InvalidArgumentException
+     */
+    private static function attribute(string $name, mixed $definition): AttributeMapping
+    {
+        if (! is_array($definition)) {
+            throw new InvalidArgumentException('an attribute is a map (spec/saml.md section 5.2).');
+        }
+        $format = self::string($definition['name_format'] ?? 'uri', 'name_format');
+        $friendlyName = $definition['friendly_name'] ?? null;
+
+        return new AttributeMapping(
+            self::string($definition['claim'] ?? null, 'claim'),
+            $name,
+            AttributeNameFormat::named($format) ?? throw new InvalidArgumentException(sprintf(
+                '"%s" is not a name format of Core section 8.2: uri, basic or unspecified.',
+                $format,
+            )),
+            $friendlyName === null ? null : self::string($friendlyName, 'friendly_name'),
+        );
+    }
+
+    /**
+     * @throws InvalidArgumentException
+     */
+    private static function string(mixed $value, string $member): string
+    {
+        return is_string($value) ? $value : throw new InvalidArgumentException(sprintf('"%s" is a string.', $member));
+    }
+
+    /**
+     * @param array<array-key, mixed> $definition
+     *
+     * @throws InvalidArgumentException
+     */
+    private static function boolean(array $definition, string $member, bool $default): bool
+    {
+        $value = $definition[$member] ?? $default;
+
+        return is_bool($value) ? $value : throw new InvalidArgumentException(sprintf('"%s" is a boolean.', $member));
+    }
+
+    /**
+     * @param array<array-key, mixed> $definition
+     *
+     * @return array<array-key, mixed>
+     *
+     * @throws InvalidArgumentException
+     */
+    private static function map(array $definition, string $member): array
+    {
+        $value = $definition[$member] ?? [];
+
+        return is_array($value) ? $value : throw new InvalidArgumentException(sprintf('"%s" is a map.', $member));
+    }
+
+    /**
+     * @param array<array-key, mixed> $definition
+     *
+     * @return list<mixed>
+     *
+     * @throws InvalidArgumentException
+     */
+    private static function list(array $definition, string $member): array
+    {
+        return array_values(self::map($definition, $member));
+    }
+}
