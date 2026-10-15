@@ -185,8 +185,12 @@ final readonly class SingleSignOn
      */
     private function declaration(Tenant $tenant, SignOnRequest $request): ServiceProvider
     {
-        return $this->serviceProviders->find($tenant, $request->serviceProvider)
-            ?? throw new SignOnRefusedException('The service provider of the request is no longer declared (spec/saml.md section 6.4 step 2).');
+        return (
+            $this->serviceProviders->find(
+                $tenant,
+                $request->serviceProvider,
+            ) ?? throw new SignOnRefusedException('The service provider of the request is no longer declared (spec/saml.md section 6.4 step 2).')
+        );
     }
 
     /**
