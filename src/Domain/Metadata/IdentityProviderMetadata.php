@@ -9,8 +9,10 @@ use function sprintf;
 
 /**
  * The answer of the metadata endpoint of the identity provider of a tenant (spec/saml.md section 6.1 step 6): the
- * serialized md:EntityDescriptor, its media type, and how long a cache may hold it, the max-age the staging window of
- * a key derives from, so that no cached copy is older than that window (S-2).
+ * serialized md:EntityDescriptor, its media type, and how long an HTTP cache may hold it, the max-age of the keys of
+ * the tenant, minutes, so that a service provider that fetches it finds the next certificate far inside the staging
+ * window of a SAML key (S-2, S-12); how long the service provider keeps what it fetched is the cacheDuration the
+ * document carries.
  */
 final readonly class IdentityProviderMetadata
 {
