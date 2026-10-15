@@ -40,10 +40,13 @@ final readonly class AttributeRelease
         if ($declaration->attributes === []) {
             return [];
         }
-        $values = $this->claims->of($user, array_values(array_unique(array_map(
-            static fn (AttributeMapping $mapping): string => $mapping->claim,
-            $declaration->attributes,
-        ))));
+        $values = $this->claims->of(
+            $user,
+            array_values(array_unique(array_map(
+                static fn (AttributeMapping $mapping): string => $mapping->claim,
+                $declaration->attributes,
+            ))),
+        );
         $released = [];
         foreach ($declaration->attributes as $mapping) {
             if (! array_key_exists($mapping->claim, $values) || $values[$mapping->claim] === null) {
