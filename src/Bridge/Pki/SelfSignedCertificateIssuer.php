@@ -25,6 +25,7 @@ use OpenSSLAsymmetricKey;
 use SensitiveParameter;
 use function sprintf;
 use function str_split;
+use SpomkyLabs\Pki\ASN1\Type\Primitive\NullType;
 use SpomkyLabs\Pki\CryptoEncoding\PEM;
 use SpomkyLabs\Pki\CryptoTypes\AlgorithmIdentifier\Signature\SHA256WithRSAEncryptionAlgorithmIdentifier;
 use SpomkyLabs\Pki\CryptoTypes\Asymmetric\PrivateKeyInfo;
@@ -43,8 +44,9 @@ use Throwable;
  * The self-signed certificate around a SAML key of a tenant, built with pki-framework (spec/saml.md section 6.1 step
  * 2, S-3): X.509 version 3, a serial number drawn from the "kid", the slug of the tenant for its subject and its
  * issuer, valid from the creation of the key with no well-defined expiration date (RFC 5280 §4.1.2.5), the public key
- * of the key's JWK, keyUsage digitalSignature alone, signed sha256WithRSAEncryption by the key itself, whose PKCS #1
- * v1.5 signature is deterministic: built twice, it is the same bytes.
+ * of the key's JWK, keyUsage digitalSignature alone, signed sha256WithRSAEncryption by the key itself, its parameters
+ * NULL as RFC 4055 §5 requires of a producer, whose PKCS #1 v1.5 signature is deterministic: built twice, it is the
+ * same bytes.
  *
  * It is verified under its own public key before it is returned, the result of openssl_verify() compared to 1 and
  * never to a boolean: the function answers -1 on an error, which PHP holds for true. The private half is turned into
@@ -179,7 +181,7 @@ final readonly class SelfSignedCertificateIssuer implements CertificateIssuerInt
             ->withVersion(TBSCertificate::VERSION_3)
             ->withSerialNumber(self::serialNumber($key))
             ->withExtensions(Extensions::create(KeyUsageExtension::create(true, KeyUsageExtension::DIGITAL_SIGNATURE)))
-            ->sign(SHA256WithRSAEncryptionAlgorithmIdentifier::create(), $privateKeyInfo);
+            ->sign(SHA256WithRSAEncryptionAlgorithmIdentifier::create(NullType::create()), $privateKeyInfo);
     }
 
     /**
