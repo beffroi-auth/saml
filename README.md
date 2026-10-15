@@ -24,7 +24,11 @@ does, whatever the tenant announces, the assertion going only to an assertion co
 metadata; and single sign-on: a request received over HTTP-Redirect or HTTP-POST, answered from the session of the
 core or after its login, with a response and an assertion both signed by the key of the tenant, valid five minutes,
 addressed to that request, carrying a persistent `NameID` of its own per service provider and the attributes its
-declaration maps from the claims the provider serves.
+declaration maps from the claims the provider serves; and Single Logout started by a service provider: a signed
+`LogoutRequest` received over either binding, accepted once, ending the sessions of the core it names when their user
+is the principal of its `NameID`, as every session of the core ends, and answered with a signed `LogoutResponse` at a
+single logout service of the accepted metadata of that service provider, each service provider's part in a session
+being recorded for the logout the identity provider starts.
 
 The package requires PHP 8.4 or later, `beffroi/core`, `beffroi/saml2-model`, `beffroi/saml2-bindings`,
 `beffroi/xml-security` and `spomky-labs/pki-framework`.
