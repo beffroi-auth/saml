@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Saml\Domain\Key;
 
-use Beffroi\Core\Domain\Key\KeyAlgorithmInterface;
+use Beffroi\Core\Domain\Key\KeptSigningAlgorithmInterface;
 
 /**
  * The algorithm of the key a tenant signs its SAML messages with (spec/saml.md section 5.1, S-1): a key of the tenant
@@ -12,7 +12,8 @@ use Beffroi\Core\Domain\Key\KeyAlgorithmInterface;
  * every key and rotated by the same commands, and published as a certificate in the metadata of its identity
  * provider (section 6.1), never in its JWK Set. It does not extend the core's PublishedKeyAlgorithmInterface for that
  * reason: a relying party that reads the JWK Set has no use for it, and a key in that set is a key the set entitles
- * its reader to verify a JWS with.
+ * its reader to verify a JWS with. It extends the core's KeptSigningAlgorithmInterface instead, a key the tenant keeps
+ * and signs with, which the core opens with the KMS once per process when an assertion is signed (section 6.4 step 7).
  *
  * It names itself rather than naming a JOSE algorithm, as the keys the tenant keeps do: a tenant holds one active key
  * per algorithm, and a SAML key answering to the name of a JWS algorithm would be one pair doing two jobs. Its key
@@ -23,7 +24,7 @@ use Beffroi\Core\Domain\Key\KeyAlgorithmInterface;
  * before it signs and works a year. The two constants are the default figures of the family, which a deployment may
  * set otherwise.
  */
-interface SamlSigningAlgorithmInterface extends KeyAlgorithmInterface
+interface SamlSigningAlgorithmInterface extends KeptSigningAlgorithmInterface
 {
     /**
      * How long a staged SAML key is published before it signs, in seconds: seven days, seven times the cacheDuration
