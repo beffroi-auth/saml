@@ -15,7 +15,10 @@ bundle's.
 This file is its short version. The package is being built by sub-spike 9c, the identity provider role
 ([beffroi-php/beffroi#645](https://github.com/beffroi-php/beffroi/issues/645)): it holds the identity provider of a
 tenant so far, its signing key, kept by the KMS as every key of the tenant, the self-signed certificate around that
-key and the metadata that publishes it, the next key's certificate beside the current one before it signs anything.
+key and the metadata that publishes it, the next key's certificate beside the current one before it signs anything;
+and the service providers of the tenant, declared in its configuration, their metadata read from a file or an `https`
+URL, trusted by that channel or verified under pinned certificates, refused when expired or older than the document
+accepted, and refused when they ask for encryption without a key for it.
 
 The package requires PHP 8.4 or later, `beffroi/core`, `beffroi/saml2-model`, `beffroi/saml2-bindings`,
 `beffroi/xml-security` and `spomky-labs/pki-framework`.
