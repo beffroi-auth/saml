@@ -91,6 +91,11 @@ final readonly class ModelServiceProviderMetadataReader implements ServiceProvid
             throw new MetadataRefusedException($exception->getMessage(), 0, $exception);
         }
 
-        return new ServiceProviderMetadata($descriptor->entityId, $descriptor->validUntil, $encryptionCertificates);
+        return new ServiceProviderMetadata(
+            $descriptor->entityId,
+            $descriptor->validUntil,
+            $encryptionCertificates,
+            $descriptor->serviceProvider->authnRequestsSigned,
+        );
     }
 }

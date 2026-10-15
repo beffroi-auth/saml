@@ -12,8 +12,8 @@ use function count;
 /**
  * A service provider of a tenant as the deployment declares it (spec/saml.md S-5, section 5.2): its entity ID, where
  * its metadata are read from and who signs them, the claims it is sent as attributes, whether it asks for its
- * assertions encrypted (S-7), and whether it signs its authentication requests, which issue #730 reads and nothing
- * reads yet. Never registered by a request nor through a page: a declaration goes away when its block does.
+ * assertions encrypted (S-7), and whether it signs its authentication requests, without which none of its requests
+ * is accepted unsigned (S-9). Never registered by a request nor through a page: a declaration goes away when its block does.
  */
 final readonly class ServiceProvider
 {
