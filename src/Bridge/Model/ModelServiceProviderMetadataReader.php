@@ -87,6 +87,10 @@ final readonly class ModelServiceProviderMetadataReader implements ServiceProvid
                 static fn (string $base64): Certificate => new Certificate($base64),
                 $descriptor->serviceProvider->encryptionCertificates,
             );
+            $signingCertificates = array_map(
+                static fn (string $base64): Certificate => new Certificate($base64),
+                $descriptor->serviceProvider->signingCertificates,
+            );
         } catch (InvalidArgumentException $exception) {
             throw new MetadataRefusedException($exception->getMessage(), 0, $exception);
         }
@@ -96,6 +100,7 @@ final readonly class ModelServiceProviderMetadataReader implements ServiceProvid
             $descriptor->validUntil,
             $encryptionCertificates,
             $descriptor->serviceProvider->authnRequestsSigned,
+            $signingCertificates,
         );
     }
 }

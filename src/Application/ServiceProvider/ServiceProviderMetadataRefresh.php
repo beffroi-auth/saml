@@ -6,6 +6,7 @@ namespace Beffroi\Saml\Application\ServiceProvider;
 
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Saml\Domain\ServiceProvider\AcceptedMetadata;
+use Beffroi\Saml\Domain\ServiceProvider\AuthnRequestSigning;
 use Beffroi\Saml\Domain\ServiceProvider\ServiceProvider;
 use Beffroi\Saml\Domain\ServiceProvider\ServiceProviderMetadata;
 use Beffroi\Saml\Exception\MetadataRefusedException;
@@ -21,7 +22,8 @@ use Symfony\Component\Uid\Uuid;
  * The metadata of a service provider registered the first time and refreshed every time after, one procedure
  * (spec/saml.md section 6.2): read from the location its declaration names, by the channel or under the signers it
  * pins (S-5), never expired nor older than the document accepted (S-6), refused when it asks for encryption without a
- * key for it (S-7), and kept as the bytes that were read (S-8).
+ * key for it (S-7) and when its requests need a signature without a key to verify it by (S-11), and kept as the bytes
+ * that were read (S-8).
  *
  * A refusal leaves the accepted document as it was and is returned rather than thrown, so that a refresh of every
  * service provider reads each of them whatever one answers.
@@ -115,6 +117,9 @@ final readonly class ServiceProviderMetadataRefresh
         }
         if ($serviceProvider->encryptAssertions && $metadata->encryptionCertificates === []) {
             throw new MetadataRefusedException('The service provider asks for encrypted assertions and its metadata hold no key for encryption (spec/saml.md S-7).');
+        }
+        if ($metadata->signingCertificates === [] && AuthnRequestSigning::of($serviceProvider, $metadata)->required) {
+            throw new MetadataRefusedException('The requests of the service provider need a signature and its metadata hold no key for signing (spec/saml.md S-11).');
         }
 
         return $metadata;
