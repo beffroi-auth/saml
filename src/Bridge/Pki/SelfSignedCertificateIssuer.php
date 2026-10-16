@@ -12,6 +12,7 @@ use Beffroi\Saml\Domain\Key\SamlSigningAlgorithmInterface;
 use Beffroi\Saml\Domain\Metadata\Certificate;
 use Beffroi\Saml\Port\CertificateIssuerInterface;
 use function base64_encode;
+use DateInterval;
 use DateTimeImmutable;
 use function hash;
 use function is_string;
@@ -38,10 +39,9 @@ use Throwable;
 /**
  * The self-signed certificate around a SAML key of a tenant, built with pki-framework (spec/saml.md section 6.1 step
  * 2, S-3): X.509 version 3, a serial number drawn from the "kid", the slug of the tenant for its subject and its
- * issuer, valid from the creation of the key with no well-defined expiration date (RFC 5280 §4.1.2.5), the public key
- * of the key's JWK, keyUsage digitalSignature alone, signed sha256WithRSAEncryption by the key itself, its parameters
- * NULL as RFC 4055 §5 requires of a producer, whose PKCS #1 v1.5 signature is deterministic: built twice, it is the
- * same bytes.
+ * issuer, valid from the creation of the key, to the second, for ten years, the public key of the key's JWK, keyUsage
+ * digitalSignature alone, signed sha256WithRSAEncryption by the key itself, its parameters NULL as RFC 4055 §5 requires
+ * of a producer, whose PKCS #1 v1.5 signature is deterministic: built twice, it is the same bytes.
  *
  * It is verified under its own public key before it is returned, the result of openssl_verify() compared to 1 and
  * never to a boolean: the function answers -1 on an error, which PHP holds for true. The private half is turned into
@@ -50,10 +50,11 @@ use Throwable;
 final readonly class SelfSignedCertificateIssuer implements CertificateIssuerInterface
 {
     /**
-     * RFC 5280 §4.1.2.5: the notAfter of a certificate with no well-defined expiration date. The life of the key is
-     * its status, and a certificate in metadata is the notation of a key (Metadata Interoperability Profile §2.6.1).
+     * How long the certificate is valid from the creation of its key (section 6.1 step 2): ten years, as hosted
+     * identity providers issue theirs, a date before 2050 being written as UTCTime, where Entra refuses a certificate
+     * valid until 9999-12-31 in GeneralizedTime (section 7).
      */
-    public const string NOT_AFTER = '9999-12-31T23:59:59Z';
+    public const string VALIDITY = 'P10Y';
 
     public function selfSigned(UnsealedKey $key): Certificate
     {
@@ -98,10 +99,9 @@ final readonly class SelfSignedCertificateIssuer implements CertificateIssuerInt
         }
         $privateKeyInfo = PrivateKeyInfo::fromDER(PEM::fromString($pem)->data());
         $name = Name::fromString('cn=' . $key->tenant->slug);
-        $validity = Validity::create(
-            Time::create(new DateTimeImmutable('@' . $key->createdAt->getTimestamp())),
-            Time::create(new DateTimeImmutable(self::NOT_AFTER)),
-        );
+        $notBefore = new DateTimeImmutable('@' . $key->createdAt->getTimestamp());
+        // pki-framework writes a date before 2050 as UTCTime and a later one as GeneralizedTime (RFC 5280 §4.1.2.5)
+        $validity = Validity::create(Time::create($notBefore), Time::create($notBefore->add(new DateInterval(self::VALIDITY))));
 
         return TBSCertificate::create($name, $privateKeyInfo->publicKeyInfo(), $name, $validity)
             ->withVersion(TBSCertificate::VERSION_3)
