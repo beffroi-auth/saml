@@ -74,6 +74,21 @@ final class SigningCertificates
         return $certificates;
     }
 
+    /**
+     * The certificate of a SAML key already opened, the active one a signature is made with, whose KeyInfo carries it
+     * (S-37): the one of() lists for that key, kept with it, built from the key handed over when it is not built yet,
+     * so that the KMS is not asked again.
+     *
+     * @param UnsealedKey $key a key whose algorithm is a SamlSigningAlgorithmInterface, opened by the KMS
+     *
+     * @throws InvalidArgumentException when the key is not a SAML signing key, or not the one its public JWK says
+     * @throws RuntimeException when the certificate cannot be built, or does not verify
+     */
+    public function ofOpened(UnsealedKey $key): Certificate
+    {
+        return $this->built[self::index($key->key->tenant, $key->key->kid)] ??= $this->issuer->selfSigned($key);
+    }
+
     private static function index(Tenant $tenant, string $kid): string
     {
         return $tenant->id->toRfc4122() . '/' . $kid;
