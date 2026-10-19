@@ -15,5 +15,16 @@ interface AcceptedMetadataRepositoryInterface
 {
     public function find(Tenant $tenant, string $entityId): ?AcceptedMetadata;
 
+    /**
+     * The first document accepted for a service provider of a tenant (section 6.2 step 7): written unless another
+     * process registered that service provider since it was found to have none, its row then kept and nothing written.
+     *
+     * @return bool false when another process registered the service provider first
+     */
+    public function register(AcceptedMetadata $metadata): bool;
+
+    /**
+     * The accepted document of a service provider, which a newer one replaced (section 6.2 step 7).
+     */
     public function save(AcceptedMetadata $metadata): void;
 }

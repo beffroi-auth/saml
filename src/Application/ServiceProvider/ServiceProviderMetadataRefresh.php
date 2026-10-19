@@ -13,6 +13,7 @@ use Beffroi\Saml\Port\AcceptedMetadataRepositoryInterface;
 use Beffroi\Saml\Port\MetadataFetcherInterface;
 use Beffroi\Saml\Port\ServiceProviderMetadataReaderInterface;
 use Beffroi\Saml\Port\ServiceProvidersInterface;
+use Exception;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -37,7 +38,9 @@ final readonly class ServiceProviderMetadataRefresh
     }
 
     /**
-     * Every service provider the tenant declares, in the order of the declaration.
+     * Every service provider the tenant declares, in the order of the declaration, each one isolated from the others:
+     * an exception that is not a refusal, a store or a reader that fails, is reported for the service provider it was
+     * thrown for, and the next one is read.
      *
      * @return list<MetadataRefreshment>
      */
@@ -45,7 +48,11 @@ final readonly class ServiceProviderMetadataRefresh
     {
         $refreshments = [];
         foreach ($this->serviceProviders->of($tenant) as $serviceProvider) {
-            $refreshments[] = $this->refresh($tenant, $serviceProvider);
+            try {
+                $refreshments[] = $this->refresh($tenant, $serviceProvider);
+            } catch (Exception $failure) {
+                $refreshments[] = MetadataRefreshment::failed($serviceProvider->entityId, $failure);
+            }
         }
 
         return $refreshments;
@@ -71,7 +78,7 @@ final readonly class ServiceProviderMetadataRefresh
         $metadata = $this->read($serviceProvider, $document);
         $accepted = $this->accepted->find($tenant, $serviceProvider->entityId);
         if (! $accepted instanceof AcceptedMetadata) {
-            $this->accepted->save(new AcceptedMetadata(
+            $registered = $this->accepted->register(new AcceptedMetadata(
                 Uuid::v7(),
                 $tenant,
                 $serviceProvider->entityId,
@@ -80,7 +87,9 @@ final readonly class ServiceProviderMetadataRefresh
                 $this->clock->now(),
             ));
 
-            return MetadataRefreshment::registered($serviceProvider->entityId);
+            return $registered
+                ? MetadataRefreshment::registered($serviceProvider->entityId)
+                : MetadataRefreshment::registeredMeanwhile($serviceProvider->entityId);
         }
         if ($accepted->holds($document)) {
             return MetadataRefreshment::unchanged($serviceProvider->entityId);
