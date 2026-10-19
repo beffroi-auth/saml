@@ -30,9 +30,11 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * Single Logout started by a service provider, from the request the bundle received to the answer the browser
- * carries back (spec/saml.md section 6.5): the request accepted, once (S-22, S-23), the sessions it names ended when
- * their user is the principal it names (S-24), as every session of the core ends (S-25), and the answer written to the
- * single logout service of the accepted metadata of the service provider (S-27).
+ * carries back (spec/saml.md section 6.5): the key that signs the answer opened first, then the request accepted, once
+ * (S-22, S-23), the sessions it names ended when their user is the principal it names (S-24), as every session of the
+ * core ends (S-25), and the answer written to the single logout service of the accepted metadata of the service
+ * provider (S-27). A key that cannot be opened ends nothing and remembers nothing, so that the same request is accepted
+ * once the key or the KMS is back.
  */
 final readonly class SingleLogout
 {
@@ -51,12 +53,14 @@ final readonly class SingleLogout
      * @param string $queryString the raw query string (section 6.8)
      *
      * @throws LogoutRefusedException when the request is refused: no session ended, no SAML answer
-     * @throws KeyNotFoundException when the tenant holds no active SAML key
+     * @throws KeyNotFoundException when the tenant holds no active SAML key: nothing read, ended or remembered
      * @throws KmsUnavailableException when the KMS does not answer
      * @throws RuntimeException when the salt of the tenant can neither be read nor drawn
      */
     public function redirect(Tenant $tenant, string $queryString, RequestContext $context): PostedForm|RedirectedMessage
     {
+        $this->responder->open($tenant);
+
         return $this->answer($tenant, $this->receiver->redirect($tenant, $queryString), $context);
     }
 
@@ -70,6 +74,8 @@ final readonly class SingleLogout
      */
     public function post(Tenant $tenant, array $fields, RequestContext $context): PostedForm|RedirectedMessage
     {
+        $this->responder->open($tenant);
+
         return $this->answer($tenant, $this->receiver->post($tenant, $fields), $context);
     }
 

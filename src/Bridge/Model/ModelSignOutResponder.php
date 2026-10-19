@@ -27,7 +27,9 @@ use InvalidArgumentException;
  * section 6.5 step 4, S-27): a LogoutResponse of a new ID to the single logout service resolved when the request was
  * received, its InResponseTo the ID of the request, its Issuer the entity ID of the tenant, its Status the one of S-24;
  * signed by the active SAML key of the tenant under RSA-SHA256 (TenantSigning), over the query string by RedirectSender
- * for HTTP-Redirect, in its XML by PostSender for HTTP-POST; the RelayState received handed back as it is.
+ * for HTTP-Redirect, in its XML by PostSender for HTTP-POST; the RelayState received handed back as it is. The key is
+ * opened by open() before the request is read (section 6.5 step 1), the core holding it open for the process, so that
+ * answer() finds it open.
  */
 final readonly class ModelSignOutResponder implements SignOutResponderInterface
 {
@@ -36,6 +38,15 @@ final readonly class ModelSignOutResponder implements SignOutResponderInterface
         private RedirectSender $redirect = new RedirectSender(),
         private PostSender $post = new PostSender(),
     ) {
+    }
+
+    public function open(Tenant $tenant): void
+    {
+        try {
+            $this->signing->of($tenant);
+        } catch (RefusedXml|InvalidArgumentException $exception) {
+            throw new RuntimeException('The active SAML key of the tenant is one Dsig refuses to sign with (spec/saml.md section 6.5 step 1).', 0, $exception);
+        }
     }
 
     public function answer(Tenant $tenant, SignOutResponse $response): PostedForm|RedirectedMessage

@@ -14,10 +14,19 @@ use Beffroi\Saml\Domain\SingleSignOn\PostedForm;
 /**
  * The answer to a LogoutRequest, written, signed by the active SAML key of the tenant and sent over the binding of the
  * single logout service it goes to (spec/saml.md section 6.5 step 4, S-27): the URL of HTTP-Redirect, or the form of
- * HTTP-POST.
+ * HTTP-POST. The key is opened first, before the request is read (section 6.5 step 1).
  */
 interface SignOutResponderInterface
 {
+    /**
+     * Opens the active SAML key of the tenant, which the process then holds open for the answer, before anything of the
+     * request is read: a key that cannot be opened ends nothing and remembers nothing (S-23, S-27).
+     *
+     * @throws KeyNotFoundException when the tenant holds no active SAML key
+     * @throws KmsUnavailableException when the KMS does not answer to open it
+     */
+    public function open(Tenant $tenant): void;
+
     /**
      * @throws KeyNotFoundException when the tenant holds no active SAML key
      * @throws KmsUnavailableException when the KMS does not answer to open it

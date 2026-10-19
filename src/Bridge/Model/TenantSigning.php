@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace Beffroi\Saml\Bridge\Model;
 
 use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Core\Exception\KeyNotFoundException;
 use Beffroi\Core\Exception\KmsUnavailableException;
 use Beffroi\Core\Port\KeptSigningKeyProviderInterface;
 use Beffroi\Saml\Bridge\Pki\RsaPrivateKey;
 use Beffroi\Saml\Domain\Key\SamlSigningAlgorithmInterface;
 use Beffroi\Saml2\Model\Writing\Signing;
+use Beffroi\Xml\Dsig\Exception\InvalidKey;
 use Beffroi\Xml\Dsig\PrivateKey;
 use Beffroi\Xml\Dsig\SignatureAlgorithm;
 
@@ -30,6 +32,8 @@ final readonly class TenantSigning
     /**
      * @throws KeyNotFoundException when the tenant holds no active SAML key
      * @throws KmsUnavailableException when the KMS does not answer to open it
+     * @throws InvalidKey when Dsig refuses to sign with it, under 2 048 bits (D-16)
+     * @throws InvalidArgumentException when its private half is not the one of its public JWK, or not RSA
      */
     public function of(Tenant $tenant): Signing
     {
