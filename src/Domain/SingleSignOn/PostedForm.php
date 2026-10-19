@@ -11,8 +11,9 @@ namespace Beffroi\Saml\Domain\SingleSignOn;
  *
  * A form that posts a LogoutRequest of a chain says where a redirection of its submission may go after its action
  * (S-36): the single logout service of the tenant, where its answer comes back, and the services the chain goes on
- * to, which the page names in its "form-action" with the origin of the action. A form that posts a response, which
- * nobody answers, reaches nothing more.
+ * to, which the page names in its "form-action" with the origin of the action. A form that posts a LogoutResponse,
+ * which nobody answers, reaches nothing more. A form that posts a response of single sign-on reaches wherever the
+ * assertion consumer service sends the browser, which nobody states: the page that posts it names no "form-action".
  */
 final readonly class PostedForm
 {
