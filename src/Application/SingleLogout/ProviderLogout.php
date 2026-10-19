@@ -19,6 +19,7 @@ use Beffroi\Saml\Domain\SingleLogout\LogoutHop;
 use Beffroi\Saml\Domain\SingleLogout\LogoutProgress;
 use Beffroi\Saml\Domain\SingleLogout\LogoutRequester;
 use Beffroi\Saml\Domain\SingleLogout\RedirectedMessage;
+use Beffroi\Saml\Domain\SingleLogout\SentSignOutNotice;
 use Beffroi\Saml\Domain\SingleLogout\SignOutAnswer;
 use Beffroi\Saml\Domain\SingleLogout\SignOutNotice;
 use Beffroi\Saml\Domain\SingleLogout\SignOutResponse;
@@ -26,14 +27,17 @@ use Beffroi\Saml\Domain\SingleLogout\SignOutStatus;
 use Beffroi\Saml\Domain\SingleSignOn\PersistentNameId;
 use Beffroi\Saml\Domain\SingleSignOn\PostedForm;
 use Beffroi\Saml\Exception\LogoutRefusedException;
+use Beffroi\Saml\Exception\SignOutNoticeRefusedException;
 use Beffroi\Saml\Port\IdentityProviderEndpointsInterface;
 use Beffroi\Saml\Port\LogoutChainRepositoryInterface;
 use Beffroi\Saml\Port\PersistentIdentifierSaltInterface;
 use Beffroi\Saml\Port\SessionParticipationRepositoryInterface;
 use Beffroi\Saml\Port\SignOutNotifierInterface;
 use Beffroi\Saml\Port\SignOutResponderInterface;
+use DateTimeImmutable;
 use Psr\Clock\ClockInterface;
 use function random_bytes;
+use Throwable;
 
 /**
  * Single Logout started by the identity provider (spec/saml.md section 6.6): once a browser has ended the sessions it
@@ -81,7 +85,7 @@ final readonly class ProviderLogout
         if ($hops === [] && $requester === null) {
             return new LogoutChainEnded($continueTo);
         }
-        $reference = Base64Url::encode(random_bytes(self::REFERENCE_BYTES));
+        $reference = self::reference();
         $this->chains->save(new LogoutChain(
             LogoutChain::digestOf($reference),
             $tenant,
@@ -102,7 +106,8 @@ final readonly class ProviderLogout
 
     /**
      * Section 6.6 step 2: the chain written under $reference, open, waiting for no answer, and taken by this request
-     * (S-32); then the next step.
+     * (S-32); then the next step. A step that fails writes the chain back as it was taken, under the same reference,
+     * and the failure goes up: the same request plays the step again (S-32).
      *
      * @throws LogoutRefusedException when no open chain is there, or another request took it first
      * @throws KeyNotFoundException when the tenant holds no active SAML key
@@ -116,25 +121,36 @@ final readonly class ProviderLogout
             throw new LogoutRefusedException('No chain of logout waits to be resumed under this reference (spec/saml.md S-32).');
         }
         $this->take($chain);
+        try {
+            return $this->next($tenant, $chain->reference, $chain->progress);
+        } catch (Throwable $failure) {
+            $this->chains->save($chain);
 
-        return $this->next($tenant, $chain->reference, $chain->progress);
+            throw $failure;
+        }
     }
 
     /**
      * Section 6.6 step 4: the answer of the outstanding request, validated already (S-33), the chain taken by this
-     * request (S-32); another status than Success counts; then the next step.
+     * request (S-32); another status than Success counts; then the next step. A next step that fails cannot be played
+     * again by that answer, which the replay store remembers: the chain, the answer counted, is written back under a new
+     * reference, waiting for nothing, and handed on as a chain begun is, which plays the step again (S-32, S-35).
      *
      * @throws LogoutRefusedException when another request took the chain first
-     * @throws KeyNotFoundException
-     * @throws KmsUnavailableException
-     * @throws RuntimeException
      */
-    public function answered(Tenant $tenant, SignOutAnswer $answer): PostedForm|RedirectedMessage|LogoutChainEnded
+    public function answered(Tenant $tenant, SignOutAnswer $answer): PostedForm|RedirectedMessage|LogoutChainStarted|LogoutChainEnded
     {
         $chain = $answer->chain;
         $this->take($chain);
+        $progress = $chain->progress->answered($answer->success);
+        try {
+            return $this->next($tenant, $chain->reference, $progress);
+        } catch (Throwable) {
+            $reference = self::reference();
+            $this->chains->save(new LogoutChain(LogoutChain::digestOf($reference), $tenant, null, $progress, $chain->expiresAt));
 
-        return $this->next($tenant, $chain->reference, $chain->progress->answered($answer->success));
+            return new LogoutChainStarted($reference, []);
+        }
     }
 
     /**
@@ -156,6 +172,14 @@ final readonly class ProviderLogout
     }
 
     /**
+     * A reference a chain is resumed by, drawn from random_bytes() (S-32).
+     */
+    private static function reference(): string
+    {
+        return Base64Url::encode(random_bytes(self::REFERENCE_BYTES));
+    }
+
+    /**
      * @throws LogoutRefusedException
      */
     private function take(LogoutChain $chain): void
@@ -167,8 +191,8 @@ final readonly class ProviderLogout
 
     /**
      * Section 6.6 steps 3 and 5: the next service provider told, the chain written again waiting for its answer, a
-     * request posted reaching where the chain goes from there (S-36); a session no longer stored, or a service provider
-     * the notifier cannot tell, passed over (S-30); none left, the end (S-34).
+     * request posted reaching where the chain goes from there (S-36); a session no longer stored, a service provider the
+     * notifier cannot tell, or one whose request it cannot write, passed over (S-30); none left, the end (S-34).
      *
      * @param string $digest the SHA-256 of the reference of the chain, which the chain is written again under
      *
@@ -183,16 +207,7 @@ final readonly class ProviderLogout
         $identityProvider = $endpoints->metadata;
         for ($hop = $progress->next(); $hop !== null; $hop = $progress->next()) {
             $progress = $progress->withoutNext();
-            $session = $this->sessions->find($hop->session);
-            $sent = $session === null
-                ? null
-                : $this->notifier->notify($tenant, new SignOutNotice(
-                    $identityProvider,
-                    $hop->serviceProvider,
-                    PersistentNameId::derive($hop->serviceProvider, $session->user->subject, $this->salts->saltOf($tenant))->value,
-                    $hop->session->toRfc4122(),
-                    $now,
-                ));
+            $sent = $this->notice($tenant, $hop, $identityProvider, $now);
             if ($sent === null) {
                 $progress = $progress->passedOver();
 
@@ -214,6 +229,29 @@ final readonly class ProviderLogout
             $progress->partial ? SignOutStatus::PartialLogout : SignOutStatus::Success,
             $now,
         ));
+    }
+
+    /**
+     * Section 6.6 step 3: the request written for $hop, or null when it cannot be: its session no longer stored, its
+     * service provider one the notifier cannot tell, or one whose request it cannot write (S-30). The salt is the
+     * tenant's, read outside what passes a service provider over: a salt that cannot be read fails the step.
+     *
+     * @throws KeyNotFoundException
+     * @throws KmsUnavailableException
+     * @throws RuntimeException
+     */
+    private function notice(Tenant $tenant, LogoutHop $hop, string $identityProvider, DateTimeImmutable $now): ?SentSignOutNotice
+    {
+        $session = $this->sessions->find($hop->session);
+        if ($session === null) {
+            return null;
+        }
+        $nameId = PersistentNameId::derive($hop->serviceProvider, $session->user->subject, $this->salts->saltOf($tenant))->value;
+        try {
+            return $this->notifier->notify($tenant, new SignOutNotice($identityProvider, $hop->serviceProvider, $nameId, $hop->session->toRfc4122(), $now));
+        } catch (SignOutNoticeRefusedException) {
+            return null;
+        }
     }
 
     /**

@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace Beffroi\Saml\Bridge\Model;
 
 use Beffroi\Core\Domain\Tenant\Tenant;
-use Beffroi\Core\Exception\RuntimeException;
 use Beffroi\Saml\Domain\SingleLogout\RedirectedMessage;
 use Beffroi\Saml\Domain\SingleLogout\SentSignOutNotice;
 use Beffroi\Saml\Domain\SingleLogout\SignOutNotice;
 use Beffroi\Saml\Domain\SingleSignOn\PostedForm;
 use Beffroi\Saml\Exception\MetadataRefusedException;
+use Beffroi\Saml\Exception\SignOutNoticeRefusedException;
 use Beffroi\Saml\Port\SignOutNotifierInterface;
 use Beffroi\Saml2\Bindings\PostSender;
 use Beffroi\Saml2\Bindings\RedirectSender;
@@ -35,7 +35,9 @@ use InvalidArgumentException;
  * HTTP-POST; no RelayState.
  *
  * A service provider nobody declares any more, one with no accepted document or one the reading refuses now, and one
- * whose metadata list no single logout service, cannot be told: null (S-30).
+ * whose metadata list no single logout service, cannot be told: null (S-30). A request the model or the binding
+ * refuses to write, a single logout service the sender refuses or a key Dsig refuses to sign with, is
+ * SignOutNoticeRefusedException, which passes that service provider over.
  */
 final readonly class ModelSignOutNotifier implements SignOutNotifierInterface
 {
@@ -74,7 +76,11 @@ final readonly class ModelSignOutNotifier implements SignOutNotifierInterface
             }
             $form = $this->post->logoutRequest($request, $signing);
         } catch (RefusedXml|InvalidArgumentException $exception) {
-            throw new RuntimeException('The logout request of the identity provider is one its own reader refuses (spec/saml.md S-31).', 0, $exception);
+            throw new SignOutNoticeRefusedException(
+                'The logout request of the identity provider is one its own reader refuses (spec/saml.md S-31).',
+                0,
+                $exception,
+            );
         }
 
         return new SentSignOutNotice($request->id, new PostedForm($form->action, $form->fields));
