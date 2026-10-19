@@ -4,25 +4,27 @@ declare(strict_types=1);
 
 namespace Beffroi\Saml\Domain\ServiceProvider;
 
+use function mb_strlen;
 use function preg_match;
-use function strlen;
 
 /**
  * The lexical rules a declaration holds its names to (spec/saml.md section 6.2 step 1): a name is not empty, holds no
- * whitespace, no control character and no separator anywhere (M-6), is valid UTF-8, and is at most as long as a URI the model compares.
+ * whitespace, no control character and no separator anywhere (M-6), is valid UTF-8, which the pattern refuses
+ * otherwise, and is at most as long as a URI the model compares, counted in characters as the model counts them.
  *
  * @internal
  */
 final readonly class Lexical
 {
     /**
-     * The length of a URI the model compares or writes (`model.md` section 7, Core §8.3.6).
+     * The length of a URI the model compares or writes, in characters (`model.md` section 7, Core §8.3.6, and the
+     * entityIDType of Metadata §2.2.1).
      */
     public const int URI_LENGTH = 1024;
 
     public static function isName(string $value): bool
     {
-        return strlen($value) <= self::URI_LENGTH && preg_match('/^[^\s\p{Z}\p{Cc}]+\z/u', $value) === 1;
+        return preg_match('/^[^\s\p{Z}\p{Cc}]+\z/u', $value) === 1 && mb_strlen($value, 'UTF-8') <= self::URI_LENGTH;
     }
 
     /**
