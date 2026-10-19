@@ -166,9 +166,9 @@ final readonly class ProviderLogout
     }
 
     /**
-     * Section 6.6 steps 3 and 5: the next service provider told, the chain written again waiting for its answer;
-     * a session no longer stored, or a service provider the notifier cannot tell, passed over (S-30); none left, the
-     * end (S-34).
+     * Section 6.6 steps 3 and 5: the next service provider told, the chain written again waiting for its answer, a
+     * request posted reaching where the chain goes from there (S-36); a session no longer stored, or a service provider
+     * the notifier cannot tell, passed over (S-30); none left, the end (S-34).
      *
      * @param string $digest the SHA-256 of the reference of the chain, which the chain is written again under
      *
@@ -179,7 +179,8 @@ final readonly class ProviderLogout
     private function next(Tenant $tenant, string $digest, LogoutProgress $progress): PostedForm|RedirectedMessage|LogoutChainEnded
     {
         $now = $this->clock->now();
-        $identityProvider = $this->endpoints->locate($tenant)->metadata;
+        $endpoints = $this->endpoints->locate($tenant);
+        $identityProvider = $endpoints->metadata;
         for ($hop = $progress->next(); $hop !== null; $hop = $progress->next()) {
             $progress = $progress->withoutNext();
             $session = $this->sessions->find($hop->session);
@@ -197,9 +198,10 @@ final readonly class ProviderLogout
 
                 continue;
             }
+            $message = $sent->message instanceof PostedForm ? $this->reaching($tenant, $sent->message, $endpoints->singleLogout, $progress) : $sent->message;
             $this->chains->save(new LogoutChain($digest, $tenant, $sent->id, $progress->awaiting($hop->serviceProvider), LogoutChain::closesAt($now)));
 
-            return $sent->message;
+            return $message;
         }
         $requester = $progress->requester;
         if ($requester === null) {
@@ -212,5 +214,31 @@ final readonly class ProviderLogout
             $progress->partial ? SignOutStatus::PartialLogout : SignOutStatus::Success,
             $now,
         ));
+    }
+
+    /**
+     * S-36: the form that posts a request of the chain, which a service provider may answer by a redirection of its
+     * submission, reaching the single logout service of the tenant, where that answer comes back, the single logout
+     * service of each service provider left to tell, and where the chain ends, the service provider that asked or the
+     * URL its starter named.
+     *
+     * @param string $singleLogout the single logout service of the tenant, as its metadata publish it
+     */
+    private function reaching(Tenant $tenant, PostedForm $form, string $singleLogout, LogoutProgress $progress): PostedForm
+    {
+        $reaches = [$singleLogout];
+        foreach ($progress->hops as $hop) {
+            $destination = $this->notifier->destination($tenant, $hop->serviceProvider);
+            if ($destination !== null) {
+                $reaches[] = $destination;
+            }
+        }
+        foreach ([$progress->requester?->answerLocation, $progress->continueTo] as $end) {
+            if ($end !== null) {
+                $reaches[] = $end;
+            }
+        }
+
+        return new PostedForm($form->action, $form->fields, $reaches);
     }
 }
