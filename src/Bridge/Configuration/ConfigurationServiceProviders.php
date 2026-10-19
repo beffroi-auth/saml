@@ -20,9 +20,10 @@ use function sprintf;
 
 /**
  * The service providers declared in the configuration of the deployment (spec/saml.md S-5, section 5.2), keyed by
- * entity ID, validated when the deployment boots (section 6.2 step 1): a declaration that does not hold together
- * fails there, naming the service provider, rather than at its first refresh. They are those of one tenant, named by
- * its slug, as the clients of the configuration are.
+ * entity ID, validated when they are built (section 6.2 step 1): a declaration that does not hold together fails
+ * there, naming the service provider. The bundle builds this object when its container is compiled, so that it fails
+ * the build of the deployment rather than its first refresh. They are those of one tenant, named by its slug, as the
+ * clients of the configuration are.
  */
 final readonly class ConfigurationServiceProviders implements ServiceProvidersInterface
 {
