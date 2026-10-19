@@ -14,7 +14,9 @@ use Beffroi\Saml\Exception\MetadataRefusedException;
 interface MetadataFetcherInterface
 {
     /**
-     * The maxBytes of Core's Limits, which loads the document: a read stops there (section 7).
+     * The maxBytes of Core's Limits, which loads the document: a read stops there (section 7). Deptrac keeps a port off
+     * the classes of xml-security, so the number is written here and held equal to Core's by the suite of the package
+     * (MetadataFetcherInterfaceTest).
      */
     public const int MAX_BYTES = 1_048_576;
 
