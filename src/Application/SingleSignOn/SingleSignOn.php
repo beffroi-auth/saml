@@ -156,7 +156,8 @@ final readonly class SingleSignOn
 
     /**
      * S-17: the session that answers, an active session of the tenant, with a proof made since the request when it
-     * says ForceAuthn; null when the browser has to sign in.
+     * says ForceAuthn; null when the browser has to sign in. The core keeps a proof to the second, so the instant the
+     * request was received is compared at that precision: a login typed in that second is not older than it.
      */
     private static function answering(Tenant $tenant, SignOnRequest $request, ?AuthenticationSession $session, DateTimeImmutable $now): ?AuthenticationSession
     {
@@ -164,7 +165,7 @@ final readonly class SingleSignOn
             return null;
         }
 
-        return ! $request->forceAuthn || $session->authenticatedAt() >= $request->receivedAt ? $session : null;
+        return ! $request->forceAuthn || $session->authenticatedAt()->getTimestamp() >= $request->receivedAt->getTimestamp() ? $session : null;
     }
 
     /**
