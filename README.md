@@ -43,10 +43,12 @@ The package requires PHP 8.4 or later, `beffroi/core`, `beffroi/saml2-model`, `b
 
 Section 8 of the specification, enforced in `src/` and in `tests/` by the PHPStan rules of the monorepo
 (`.ci-tools/phpstan-saml.neon`): `validateAuthenticatedByBinding()`, the binding's authentication being the word of
-`saml2-bindings` alone; `Closure::bind()`, `Closure::bindTo()` and `Closure::call()`; Reflection; `unserialize()` and
-`__unserialize()`. Each would let a message received by `saml2-bindings` be paired with a signature verified over
-another input. A first-class callable, a callable string or a callable array naming one of them is refused as the
-call is.
+`saml2-bindings` alone; `Closure::bind()`, `Closure::bindTo()` and `Closure::call()`; Reflection; the unserializer,
+`unserialize()` and `session_decode()`, and the methods `unserialize()` and `__unserialize()` on any receiver. Each
+would let a message received by `saml2-bindings` be paired with a signature verified over another input. A first-class
+callable, a callable string or a callable array naming one of them is refused as the call is. Beside them, what the
+packages below it ban: the DOM and every parser but the loader of `xml-security`, the weak generators of randomness,
+and the statements and functions `ekino/phpstan-banned-code` bans by default (`eval`, `exec()`, `echo`, ...).
 
 ## Development
 
