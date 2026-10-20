@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Saml\Domain\ServiceProvider;
 
+use Beffroi\Core\Domain\Encoding\Host;
 use function preg_match;
 
 /**
@@ -13,15 +14,15 @@ use function preg_match;
  * page that sends the browser there (S-36).
  *
  * An https URL, its scheme compared without regard to case (RFC 3986 §3.1), its authority a host and an optional port
- * and nothing else: no userinfo, and a host that is a name for the DNS, letters, digits, hyphens and dots (RFC 3986
- * §3.2.2, RFC 1123 §2.1), which an IPv4 address is too, or an IPv6 literal between brackets. The reg-name of RFC 3986
- * admits more, its sub-delimiters among them, the ";" that ends a directive of a policy and the "," that ends a policy.
- * saml2-model, a model of the standard, accepts any absolute URI (M-6); what an identity provider hands a browser is
- * narrower.
+ * and nothing else: no userinfo, and a host of the core's rule (Host), a name for the DNS of letters, digits, hyphens
+ * and dots, which an IPv4 address is too, or an IPv6 literal between brackets, the rule a client of OpenID Connect is
+ * held to as well. The reg-name of RFC 3986 admits more, its sub-delimiters among them, the ";" that ends a directive
+ * of a policy and the "," that ends a policy. saml2-model, a model of the standard, accepts any absolute URI (M-6);
+ * what an identity provider hands a browser is narrower.
  */
 final readonly class EndpointLocation
 {
-    private const string HTTPS_ON_A_HOST = '~^https://(?:[A-Za-z0-9.-]+|\[[0-9A-Fa-f:.]+\])(?::[0-9]{1,5})?(?:[/?#]|\z)~i';
+    private const string HTTPS_ON_A_HOST = '~^https://' . Host::PATTERN . '(?::[0-9]{1,5})?(?:[/?#]|\z)~i';
 
     public static function isHttpsOnAHost(string $location): bool
     {
