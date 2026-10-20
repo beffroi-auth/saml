@@ -21,10 +21,12 @@ use Symfony\Component\Uid\Uuid;
  * were accepted.
  * One per service provider of a tenant, by its entity ID.
  *
- * The rule against a rollback is this row's own (section 6.2 step 6): a document is older than the accepted one when
- * its `validUntil` is earlier, or when it has none and the accepted one has one, and an older document is refused
- * rather than taken. Two documents without `validUntil` cannot be told apart, and the newer reading replaces the
- * older one, the channel vouching for both (section 12).
+ * The rule against a rollback is this row's own (section 6.2 step 6), and it holds a document read under the signers
+ * the declaration pins, which an older copy signed by the same key would pass as well: such a document is older than
+ * the accepted one when its `validUntil` is earlier, or when it has none and the accepted one has one, and an older
+ * document is refused rather than taken. A document its channel vouches for replaces the accepted one whatever its
+ * `validUntil`, the channel vouching for the newer reading as it vouched for the older one, so that a document a host
+ * held by somebody else wrote with a far `validUntil` is replaced at the next refresh and pins nothing (S-6).
  */
 final class AcceptedMetadata implements ClassifiedFieldsInterface
 {
@@ -59,9 +61,11 @@ final class AcceptedMetadata implements ClassifiedFieldsInterface
     }
 
     /**
-     * A newer document of the same service provider takes the place of this one (section 6.2 step 6).
+     * The document read now takes the place of this one (section 6.2 step 6): whatever its validUntil when its channel
+     * vouches for it, when it is not older than this one when it was read under the signers the declaration pins.
      *
-     * @throws MetadataRefusedException when the document is older than this one (S-6), which is then kept
+     * @throws MetadataRefusedException when the document was read signed and is older than this one (S-6), which is
+     *                                  then kept
      * @throws InvalidArgumentException when the document is another entity's: a programming error of the caller
      */
     public function replaceWith(ServiceProviderMetadata $metadata, string $document, DateTimeImmutable $at): void
@@ -69,11 +73,8 @@ final class AcceptedMetadata implements ClassifiedFieldsInterface
         if ($metadata->entityId !== $this->entityId) {
             throw new InvalidArgumentException('An accepted metadata document is replaced by a document of its own entity (spec/saml.md section 6.2 step 6).');
         }
-        if ($this->validUntil instanceof DateTimeImmutable && ! $metadata->validUntil instanceof DateTimeImmutable) {
-            throw new MetadataRefusedException('The metadata carry no validUntil where the document accepted carries one, so they cannot be shown not to be older (spec/saml.md S-6).');
-        }
-        if ($this->validUntil instanceof DateTimeImmutable && $metadata->validUntil < $this->validUntil) {
-            throw new MetadataRefusedException('The metadata are valid until an earlier instant than the document accepted, so they are older (spec/saml.md S-6).');
+        if ($metadata->readSigned) {
+            $this->refuseOlder($metadata->validUntil);
         }
         if ($document === '') {
             throw new InvalidArgumentException('An accepted metadata document holds the bytes that were read (spec/saml.md S-8).');
@@ -81,6 +82,25 @@ final class AcceptedMetadata implements ClassifiedFieldsInterface
         $this->document = $document;
         $this->validUntil = self::toTheSecond($metadata->validUntil);
         $this->acceptedAt = $at;
+    }
+
+    /**
+     * S-6: a document read signed is older than this one when its validUntil is earlier than this one's, or when it has
+     * none and this one has one.
+     *
+     * @throws MetadataRefusedException
+     */
+    private function refuseOlder(?DateTimeImmutable $validUntil): void
+    {
+        if (! $this->validUntil instanceof DateTimeImmutable) {
+            return;
+        }
+        if (! $validUntil instanceof DateTimeImmutable) {
+            throw new MetadataRefusedException('The metadata carry no validUntil where the document accepted carries one, so they cannot be shown not to be older (spec/saml.md S-6).');
+        }
+        if ($validUntil < $this->validUntil) {
+            throw new MetadataRefusedException('The metadata are valid until an earlier instant than the document accepted, so they are older (spec/saml.md S-6).');
+        }
     }
 
     /**

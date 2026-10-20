@@ -25,7 +25,8 @@ use Psr\Clock\ClockInterface;
  * The metadata of a service provider read by saml2-model's MetadataReader, loaded by SamlLoader (spec/saml.md
  * section 6.2 steps 3 and 4): model.md section 6.5 in order, the validity of M-7 against the clock of the deployment
  * among it. readTrusted() for a document its channel vouches for, readSigned() for one signed under the certificates a
- * declaration pins, which then carries a validUntil (S-6). A refusal of the model, of Core or of Dsig becomes
+ * declaration pins, which then carries a validUntil and is held to the document accepted (S-6), each saying which of
+ * the two read it. A refusal of the model, of Core or of Dsig becomes
  * MetadataRefusedException with its message, which names a rule and never a value of the document (M-16).
  */
 final readonly class ModelServiceProviderMetadataReader implements ServiceProviderMetadataReaderInterface
@@ -48,7 +49,7 @@ final readonly class ModelServiceProviderMetadataReader implements ServiceProvid
             throw new MetadataRefusedException($exception->getMessage(), 0, $exception);
         }
 
-        return self::metadataOf($descriptor, self::role($descriptor));
+        return self::metadataOf($descriptor, self::role($descriptor), false);
     }
 
     public function readSigned(string $document, array $signers): ServiceProviderMetadata
@@ -71,7 +72,7 @@ final readonly class ModelServiceProviderMetadataReader implements ServiceProvid
             throw new MetadataRefusedException('Signed metadata carry a validUntil, without which an older document signed by the same key verifies as well (spec/saml.md S-6).');
         }
 
-        return self::metadataOf($descriptor, self::role($descriptor));
+        return self::metadataOf($descriptor, self::role($descriptor), true);
     }
 
     /**
@@ -90,7 +91,7 @@ final readonly class ModelServiceProviderMetadataReader implements ServiceProvid
         }
         $role = self::role($descriptor);
 
-        return new ReadServiceProvider(self::metadataOf($descriptor, $role), $role);
+        return new ReadServiceProvider(self::metadataOf($descriptor, $role, false), $role);
     }
 
     /**
@@ -102,9 +103,11 @@ final readonly class ModelServiceProviderMetadataReader implements ServiceProvid
     }
 
     /**
+     * @param bool $readSigned whether the document was verified under the certificates a declaration pins (S-6)
+     *
      * @throws MetadataRefusedException
      */
-    private static function metadataOf(EntityDescriptor $descriptor, ServiceProvider $role): ServiceProviderMetadata
+    private static function metadataOf(EntityDescriptor $descriptor, ServiceProvider $role, bool $readSigned): ServiceProviderMetadata
     {
         try {
             $encryptionCertificates = array_map(
@@ -125,6 +128,7 @@ final readonly class ModelServiceProviderMetadataReader implements ServiceProvid
             $encryptionCertificates,
             $role->authnRequestsSigned,
             $signingCertificates,
+            $readSigned,
         );
     }
 }

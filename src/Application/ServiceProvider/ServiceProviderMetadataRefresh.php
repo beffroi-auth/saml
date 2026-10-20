@@ -21,9 +21,9 @@ use Symfony\Component\Uid\Uuid;
 /**
  * The metadata of a service provider registered the first time and refreshed every time after, one procedure
  * (spec/saml.md section 6.2): read from the location its declaration names, by the channel or under the signers it
- * pins (S-5), never expired nor older than the document accepted (S-6), refused when it asks for encryption without a
- * key for it (S-7) and when its requests need a signature without a key to verify it by (S-11), and kept as the bytes
- * that were read (S-8).
+ * pins (S-5), never expired, nor older than the document accepted when it was read under those signers (S-6), refused
+ * when it asks for encryption without a key for it (S-7) and when its requests need a signature without a key to
+ * verify it by (S-11), and kept as the bytes that were read (S-8).
  *
  * A refusal leaves the accepted document as it was and is returned rather than thrown, so that a refresh of every
  * service provider reads each of them whatever one answers.
