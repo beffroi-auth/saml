@@ -14,6 +14,7 @@ use Beffroi\Core\Exception\KmsUnavailableException;
 use Beffroi\Core\Exception\RuntimeException;
 use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
 use Beffroi\Saml\Domain\SingleLogout\LogoutChainEnded;
+use Beffroi\Saml\Domain\SingleLogout\LogoutChainSecret;
 use Beffroi\Saml\Domain\SingleLogout\LogoutChainStarted;
 use Beffroi\Saml\Domain\SingleLogout\RedirectedMessage;
 use Beffroi\Saml\Domain\SingleLogout\SignOutAnswer;
@@ -37,8 +38,9 @@ use Symfony\Component\Uid\Uuid;
  * once (S-22, S-23), the sessions it names ended when their user is the principal it names (S-24), as every session of
  * the core ends (S-25), then the other service providers of those sessions told before the answer is written to the
  * single logout service of the accepted metadata of the service provider that asked (S-27, S-34); or the answer of a
- * service provider a chain waits for, handed to the chain (section 6.6 step 4). A key that cannot be opened ends
- * nothing and remembers nothing, so that the same message is accepted once the key or the KMS is back.
+ * service provider a chain waits for, carried by the browser the chain is bound to, handed to the chain (section 6.6
+ * step 4, S-32). A key that cannot be opened ends nothing and remembers nothing, so that the same message is accepted
+ * once the key or the KMS is back.
  */
 final readonly class SingleLogout
 {
@@ -56,36 +58,48 @@ final readonly class SingleLogout
 
     /**
      * @param string $queryString the raw query string (section 6.8)
+     * @param LogoutChainSecret|null $secret the secret of a chain the browser presents, which the answer of a service
+     *                                       provider is read with (S-32, S-33), null when it presents none
      *
      * @throws LogoutRefusedException when the message is refused: no session ended, no SAML answer
      * @throws KeyNotFoundException when the tenant holds no active SAML key: nothing read, ended or remembered
      * @throws KmsUnavailableException when the KMS does not answer
      * @throws RuntimeException when the salt of the tenant can neither be read nor drawn
      */
-    public function redirect(Tenant $tenant, string $queryString, RequestContext $context): PostedForm|RedirectedMessage|LogoutChainStarted|LogoutChainEnded
-    {
+    public function redirect(
+        Tenant $tenant,
+        string $queryString,
+        RequestContext $context,
+        ?LogoutChainSecret $secret,
+    ): PostedForm|RedirectedMessage|LogoutChainStarted|LogoutChainEnded {
         $this->responder->open($tenant);
 
-        return $this->handle($tenant, $this->receiver->redirect($tenant, $queryString), $context);
+        return $this->handle($tenant, $this->receiver->redirect($tenant, $queryString, $secret), $context);
     }
 
     /**
      * @param array<array-key, mixed> $fields the fields of the form (section 6.8)
+     * @param LogoutChainSecret|null $secret the secret of a chain the browser presents, null when it presents none
      *
      * @throws LogoutRefusedException
      * @throws KeyNotFoundException
      * @throws KmsUnavailableException
      * @throws RuntimeException
      */
-    public function post(Tenant $tenant, array $fields, RequestContext $context): PostedForm|RedirectedMessage|LogoutChainStarted|LogoutChainEnded
-    {
+    public function post(
+        Tenant $tenant,
+        array $fields,
+        RequestContext $context,
+        ?LogoutChainSecret $secret,
+    ): PostedForm|RedirectedMessage|LogoutChainStarted|LogoutChainEnded {
         $this->responder->open($tenant);
 
-        return $this->handle($tenant, $this->receiver->post($tenant, $fields), $context);
+        return $this->handle($tenant, $this->receiver->post($tenant, $fields, $secret), $context);
     }
 
     /**
-     * @throws LogoutRefusedException when the chain an answer is for was played by another request (S-32)
+     * @throws LogoutRefusedException when the chain an answer is for is bound to another browser, or was played by
+     *                                another request (S-32)
      * @throws KeyNotFoundException
      * @throws KmsUnavailableException
      * @throws RuntimeException

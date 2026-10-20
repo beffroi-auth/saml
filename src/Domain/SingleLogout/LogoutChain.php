@@ -12,12 +12,14 @@ use Beffroi\Core\Domain\Tenant\Tenant;
 use DateInterval;
 use DateTimeImmutable;
 use function hash;
+use function hash_equals;
 use function sprintf;
 
 /**
- * A chain of logout the identity provider plays through the browser (spec/saml.md S-32): kept by the provider, never in
- * a cookie nor a URL, found by the SHA-256 of the reference its own pages hand on and by the ID of its outstanding
- * request, open ten minutes from its last step, taken by the one request that plays the next step.
+ * A chain of logout the identity provider plays through the browser (spec/saml.md S-32): kept by the provider, found by
+ * the SHA-256 of the reference its own pages hand on and by the ID of its outstanding request, played only by the
+ * browser that holds the secret whose SHA-256 it keeps, open ten minutes from its last step, taken by the one request
+ * that plays the next step.
  */
 final readonly class LogoutChain implements ClassifiedFieldsInterface
 {
@@ -28,10 +30,12 @@ final readonly class LogoutChain implements ClassifiedFieldsInterface
 
     /**
      * @param string $reference the SHA-256 of the reference, digestOf()
+     * @param string $secret the SHA-256 of the secret the browser that began the chain holds, LogoutChainSecret::digest()
      * @param string|null $awaitingRequest the ID of the LogoutRequest whose answer the chain waits for
      */
     public function __construct(
         public string $reference,
+        public string $secret,
         public Tenant $tenant,
         public ?string $awaitingRequest,
         public LogoutProgress $progress,
@@ -40,11 +44,12 @@ final readonly class LogoutChain implements ClassifiedFieldsInterface
     }
 
     /**
-     * What is kept of a reference: its SHA-256, in hexadecimal, so that a dump of the table resumes no chain.
+     * What is kept of a reference, and of the secret of the browser: its SHA-256, in hexadecimal, so that a dump of the
+     * table resumes no chain.
      */
-    public static function digestOf(string $reference): string
+    public static function digestOf(string $value): string
     {
-        return hash('sha256', $reference);
+        return hash('sha256', $value);
     }
 
     /**
@@ -64,12 +69,22 @@ final readonly class LogoutChain implements ClassifiedFieldsInterface
     }
 
     /**
+     * Whether $secret is the one of the browser that began the chain: another plays no step of it, and neither does a
+     * browser that presents none.
+     */
+    public function isHeldBy(LogoutChainSecret $secret): bool
+    {
+        return hash_equals($this->secret, $secret->digest());
+    }
+
+    /**
      * @return array<string, FieldClassificationInterface>
      */
     public static function classifiedFields(): array
     {
         return [
             'reference' => new NoPersonalDatum(Reason::HASHED),
+            'secret' => new NoPersonalDatum(Reason::HASHED),
             'tenant' => new NoPersonalDatum(Reason::THE_TENANT),
             'awaitingRequest' => new NoPersonalDatum(Reason::DRAWN_AT_RANDOM),
             'progress' =>

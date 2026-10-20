@@ -14,6 +14,7 @@ use Beffroi\Core\Exception\RuntimeException;
 use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
 use Beffroi\Saml\Domain\SingleLogout\LogoutChain;
 use Beffroi\Saml\Domain\SingleLogout\LogoutChainEnded;
+use Beffroi\Saml\Domain\SingleLogout\LogoutChainSecret;
 use Beffroi\Saml\Domain\SingleLogout\LogoutChainStarted;
 use Beffroi\Saml\Domain\SingleLogout\LogoutHop;
 use Beffroi\Saml\Domain\SingleLogout\LogoutProgress;
@@ -43,8 +44,8 @@ use Throwable;
  * Single Logout started by the identity provider (spec/saml.md section 6.6): once a browser has ended the sessions it
  * held (S-29), every other service provider of those sessions told through that browser, one after the other, by a
  * signed LogoutRequest (S-30, S-31), its answer read before the next one (S-33), the chain kept by the provider and
- * played once (S-32), and ended where its starter said, the answer to the service provider that asked written last
- * (S-34).
+ * played once, by the browser that began it alone (S-32), and ended where its starter said, the answer to the service
+ * provider that asked written last (S-34).
  */
 final readonly class ProviderLogout
 {
@@ -66,8 +67,9 @@ final readonly class ProviderLogout
     }
 
     /**
-     * Section 6.6 step 1: the chain of $sessions, ended already, the service provider of $requester left out (S-30).
-     * Nothing to tell and nobody to answer ends at once, nothing written.
+     * Section 6.6 step 1: the chain of $sessions, ended already, the service provider of $requester left out (S-30),
+     * bound to the browser that ends them by a secret drawn for it (S-32). Nothing to tell and nobody to answer ends at
+     * once, nothing written.
      *
      * @param list<AuthenticationSession> $sessions
      * @param string|null $continueTo where the browser goes at the end when no service provider is to be answered
@@ -86,8 +88,10 @@ final readonly class ProviderLogout
             return new LogoutChainEnded($continueTo);
         }
         $reference = self::reference();
+        $secret = LogoutChainSecret::draw();
         $this->chains->save(new LogoutChain(
             LogoutChain::digestOf($reference),
+            $secret->digest(),
             $tenant,
             null,
             new LogoutProgress(
@@ -101,28 +105,30 @@ final readonly class ProviderLogout
             LogoutChain::closesAt($this->clock->now()),
         ));
 
-        return new LogoutChainStarted($reference, $sessions);
+        return new LogoutChainStarted($reference, $secret, $sessions);
     }
 
     /**
-     * Section 6.6 step 2: the chain written under $reference, open, waiting for no answer, and taken by this request
-     * (S-32); then the next step. A step that fails writes the chain back as it was taken, under the same reference,
-     * and the failure goes up: the same request plays the step again (S-32).
+     * Section 6.6 step 2: the chain written under $reference, open, waiting for no answer, bound to $secret, and taken
+     * by this request (S-32); then the next step. A step that fails writes the chain back as it was taken, under the
+     * same reference, and the failure goes up: the same request plays the step again (S-32).
      *
-     * @throws LogoutRefusedException when no open chain is there, or another request took it first
+     * @param LogoutChainSecret|null $secret the secret the browser presents, null when it presents none
+     *
+     * @throws LogoutRefusedException when no open chain bound to $secret is there, or another request took it first
      * @throws KeyNotFoundException when the tenant holds no active SAML key
      * @throws KmsUnavailableException when the KMS does not answer
      * @throws RuntimeException when the salt of the tenant can neither be read nor drawn
      */
-    public function resume(Tenant $tenant, string $reference): PostedForm|RedirectedMessage|LogoutChainEnded
+    public function resume(Tenant $tenant, string $reference, ?LogoutChainSecret $secret): PostedForm|RedirectedMessage|LogoutChainEnded
     {
         $chain = $this->chains->ofReference($tenant, $reference);
-        if ($chain === null || $chain->awaitingRequest !== null || ! $chain->isOpen($this->clock->now())) {
+        if ($chain === null || $chain->awaitingRequest !== null || ! $chain->isOpen($this->clock->now()) || $secret === null || ! $chain->isHeldBy($secret)) {
             throw new LogoutRefusedException('No chain of logout waits to be resumed under this reference (spec/saml.md S-32).');
         }
         $this->take($chain);
         try {
-            return $this->next($tenant, $chain->reference, $chain->progress);
+            return $this->next($tenant, $chain, $chain->progress);
         } catch (Throwable $failure) {
             $this->chains->save($chain);
 
@@ -131,25 +137,30 @@ final readonly class ProviderLogout
     }
 
     /**
-     * Section 6.6 step 4: the answer of the outstanding request, validated already (S-33), the chain taken by this
-     * request (S-32); another status than Success counts; then the next step. A next step that fails cannot be played
-     * again by that answer, which the replay store remembers: the chain, the answer counted, is written back under a new
-     * reference, waiting for nothing, and handed on as a chain begun is, which plays the step again (S-32, S-35).
+     * Section 6.6 step 4: the answer of the outstanding request, validated already (S-33), carried by the browser the
+     * chain is bound to, the chain taken by this request (S-32); another status than Success counts; then the next
+     * step. A next step that fails cannot be played again by that answer, which the replay store remembers: the chain,
+     * the answer counted, is written back under a new reference, bound to the same browser, waiting for nothing, and
+     * handed on as a chain begun is, which plays the step again (S-32, S-35).
      *
-     * @throws LogoutRefusedException when another request took the chain first
+     * @throws LogoutRefusedException when the browser that carried the answer is not the one the chain is bound to, or
+     *                                another request took the chain first
      */
     public function answered(Tenant $tenant, SignOutAnswer $answer): PostedForm|RedirectedMessage|LogoutChainStarted|LogoutChainEnded
     {
         $chain = $answer->chain;
+        if (! $chain->isHeldBy($answer->secret)) {
+            throw new LogoutRefusedException('The LogoutResponse answers no request an open chain of logout waits for (spec/saml.md S-33).');
+        }
         $this->take($chain);
         $progress = $chain->progress->answered($answer->success);
         try {
-            return $this->next($tenant, $chain->reference, $progress);
+            return $this->next($tenant, $chain, $progress);
         } catch (Throwable) {
             $reference = self::reference();
-            $this->chains->save(new LogoutChain(LogoutChain::digestOf($reference), $tenant, null, $progress, $chain->expiresAt));
+            $this->chains->save(new LogoutChain(LogoutChain::digestOf($reference), $chain->secret, $tenant, null, $progress, $chain->expiresAt));
 
-            return new LogoutChainStarted($reference, []);
+            return new LogoutChainStarted($reference, $answer->secret, []);
         }
     }
 
@@ -192,15 +203,16 @@ final readonly class ProviderLogout
     /**
      * Section 6.6 steps 3 and 5: the next service provider told, the chain written again waiting for its answer, a
      * request posted reaching where the chain goes from there (S-36); a session no longer stored, a service provider the
-     * notifier cannot tell, or one whose request it cannot write, passed over (S-30); none left, the end (S-34).
+     * notifier cannot tell, or one whose request it cannot write, passed over (S-30); none left, the end (S-34), the
+     * answer to the service provider that asked among it.
      *
-     * @param string $digest the SHA-256 of the reference of the chain, which the chain is written again under
+     * @param LogoutChain $chain the chain taken, whose reference and secret it is written again under
      *
      * @throws KeyNotFoundException
      * @throws KmsUnavailableException
      * @throws RuntimeException
      */
-    private function next(Tenant $tenant, string $digest, LogoutProgress $progress): PostedForm|RedirectedMessage|LogoutChainEnded
+    private function next(Tenant $tenant, LogoutChain $chain, LogoutProgress $progress): PostedForm|RedirectedMessage|LogoutChainEnded
     {
         $now = $this->clock->now();
         $endpoints = $this->endpoints->locate($tenant);
@@ -214,7 +226,9 @@ final readonly class ProviderLogout
                 continue;
             }
             $message = $sent->message instanceof PostedForm ? $this->reaching($tenant, $sent->message, $endpoints->singleLogout, $progress) : $sent->message;
-            $this->chains->save(new LogoutChain($digest, $tenant, $sent->id, $progress->awaiting($hop->serviceProvider), LogoutChain::closesAt($now)));
+            $this->chains->save(
+                new LogoutChain($chain->reference, $chain->secret, $tenant, $sent->id, $progress->awaiting($hop->serviceProvider), LogoutChain::closesAt($now)),
+            );
 
             return $message;
         }
@@ -223,12 +237,12 @@ final readonly class ProviderLogout
             return new LogoutChainEnded($progress->continueTo);
         }
 
-        return $this->responder->answer($tenant, new SignOutResponse(
+        return new LogoutChainEnded(null, $this->responder->answer($tenant, new SignOutResponse(
             $identityProvider,
             $requester,
             $progress->partial ? SignOutStatus::PartialLogout : SignOutStatus::Success,
             $now,
-        ));
+        )));
     }
 
     /**

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Saml\Bridge\Model;
 
 use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Saml\Domain\SingleLogout\LogoutChainSecret;
 use Beffroi\Saml\Domain\SingleLogout\SignOutAnswer;
 use Beffroi\Saml\Domain\SingleLogout\SignOutRequest;
 use Beffroi\Saml\Exception\LogoutRefusedException;
@@ -69,7 +70,7 @@ final readonly class ModelLogoutMessageReceiver implements LogoutMessageReceiver
         $this->post = new PostReceiver($this->loader);
     }
 
-    public function redirect(Tenant $tenant, string $queryString): SignOutRequest|SignOutAnswer
+    public function redirect(Tenant $tenant, string $queryString, ?LogoutChainSecret $secret): SignOutRequest|SignOutAnswer
     {
         try {
             $received = $this->redirect->logoutMessage($queryString);
@@ -77,10 +78,10 @@ final readonly class ModelLogoutMessageReceiver implements LogoutMessageReceiver
             throw new LogoutRefusedException($exception->getMessage(), 0, $exception);
         }
 
-        return $this->validated($tenant, $received);
+        return $this->validated($tenant, $received, $secret);
     }
 
-    public function post(Tenant $tenant, array $fields): SignOutRequest|SignOutAnswer
+    public function post(Tenant $tenant, array $fields, ?LogoutChainSecret $secret): SignOutRequest|SignOutAnswer
     {
         try {
             $received = $this->post->logoutMessage($fields);
@@ -88,31 +89,33 @@ final readonly class ModelLogoutMessageReceiver implements LogoutMessageReceiver
             throw new LogoutRefusedException($exception->getMessage(), 0, $exception);
         }
 
-        return $this->validated($tenant, $received);
+        return $this->validated($tenant, $received, $secret);
     }
 
     /**
      * @throws LogoutRefusedException
      */
-    private function validated(Tenant $tenant, ReceivedLogoutRequest|ReceivedLogoutResponse $received): SignOutRequest|SignOutAnswer
+    private function validated(Tenant $tenant, ReceivedLogoutRequest|ReceivedLogoutResponse $received, ?LogoutChainSecret $secret): SignOutRequest|SignOutAnswer
     {
         if ($received instanceof ReceivedLogoutResponse) {
-            return $this->answer($tenant, $received);
+            return $this->answer($tenant, $received, $secret);
         }
 
         return $this->request($tenant, $received);
     }
 
     /**
-     * Section 6.6 step 4 in order (S-33).
+     * Section 6.6 step 4 in order (S-33): the chain found by the unverified InResponseTo, open and bound to the secret
+     * the browser presents (S-32), before any key is read or the answer remembered, so that a client that is not that
+     * browser spends nothing of the chain nor of the answer.
      *
      * @throws LogoutRefusedException
      */
-    private function answer(Tenant $tenant, ReceivedLogoutResponse $received): SignOutAnswer
+    private function answer(Tenant $tenant, ReceivedLogoutResponse $received, ?LogoutChainSecret $secret): SignOutAnswer
     {
         $requestId = $received->response->inResponseTo ?? throw self::unawaited();
         $chain = $this->chains->awaiting($tenant, $requestId);
-        if ($chain === null || ! $chain->isOpen($this->clock->now())) {
+        if ($chain === null || ! $chain->isOpen($this->clock->now()) || $secret === null || ! $chain->isHeldBy($secret)) {
             throw self::unawaited();
         }
         try {
@@ -133,7 +136,7 @@ final readonly class ModelLogoutMessageReceiver implements LogoutMessageReceiver
             throw new LogoutRefusedException($exception->getMessage(), 0, $exception);
         }
 
-        return new SignOutAnswer($chain, $accepted->response->status->code === StatusCode::Success);
+        return new SignOutAnswer($chain, $accepted->response->status->code === StatusCode::Success, $secret);
     }
 
     private static function unawaited(): LogoutRefusedException
