@@ -5,35 +5,27 @@ declare(strict_types=1);
 namespace Beffroi\Saml\Domain\Metadata;
 
 use Beffroi\Core\Exception\InvalidArgumentException;
-use Beffroi\Saml\Domain\ServiceProvider\Lexical;
 use function sprintf;
 
 /**
  * Where and as whom the service provider of a tenant is reached (spec/saml.md S-38, S-39, section 6.9 step 3): its
  * entity ID, the URL of its metadata unless the deployment names another, the URL of its metadata, and the URL of its
  * assertion consumer service, where a response arrives over HTTP-POST. Located under the issuer of the tenant by
- * whoever holds the routes, never read from a request (S-39); the model checks each URL as a URI of M-6 when the
- * metadata is written.
+ * whoever holds the routes, never read from a request (S-39), the entity ID a deployment names held by the locator to
+ * the rule of the model (ModelEntityId, M-6), which checks each URL again when the metadata is written.
  */
 final readonly class ServiceProviderEndpoints
 {
-    /**
-     * @throws InvalidArgumentException when the entity ID is not an absolute URI of at most 1024 characters with no
-     *                                  whitespace (S-38)
-     */
     public function __construct(
         public string $entityId,
         public string $metadata,
         public string $assertionConsumerService,
     ) {
-        if (! Lexical::isAbsoluteUri($entityId)) {
-            throw new InvalidArgumentException('The entity ID of the service provider of a tenant is an absolute URI of at most 1024 characters with no whitespace (spec/saml.md S-38).');
-        }
     }
 
     /**
-     * The rule of S-38, which the configuration of the bundle checks when its container is compiled and the locator of
-     * the service provider when it is first used, should either value hold an environment variable: one entity ID is
+     * The second rule of S-38, which the bundle checks when its container is compiled and the locator of the service
+     * provider when it is first used, should either value hold an environment variable: one entity ID is
      * one md:EntityDescriptor (Metadata §2.3.2), so the service provider of a tenant is never named as its identity
      * provider is, compared exactly (M-8).
      *
