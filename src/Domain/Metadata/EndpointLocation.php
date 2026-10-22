@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Saml\Domain\ServiceProvider;
+namespace Beffroi\Saml\Domain\Metadata;
 
 use Beffroi\Core\Domain\Encoding\Host;
 use function preg_match;
@@ -11,7 +11,8 @@ use function preg_match;
  * Where the identity provider sends a browser for a service provider (spec/saml.md S-11): the Location of an
  * md:AssertionConsumerService, the Location and the ResponseLocation of an md:SingleLogoutService, which become the
  * action of a form, the target of a redirection and, by their origin, a source of the Content-Security-Policy of the
- * page that sends the browser there (S-36).
+ * page that sends the browser there (S-36); and where the service provider sends a browser for an upstream identity
+ * provider, the Location of an md:SingleSignOnService (S-43).
  *
  * An https URL, its scheme compared without regard to case (RFC 3986 §3.1), its authority a host and an optional port
  * and nothing else: no userinfo, and a host of the core's rule (Host), a name for the DNS of letters, digits, hyphens

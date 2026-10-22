@@ -2,13 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Saml\Domain\ServiceProvider;
+namespace Beffroi\Saml\Domain\Metadata;
 
 use Beffroi\Core\Domain\PersonalData\ClassifiedFieldsInterface;
 use Beffroi\Core\Domain\PersonalData\FieldClassificationInterface;
 use Beffroi\Core\Domain\PersonalData\NoPersonalDatum;
 use Beffroi\Core\Domain\PersonalData\Reason;
-use Beffroi\Core\Domain\PersonalData\Sealed;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Saml\Exception\MetadataRefusedException;
@@ -16,10 +15,9 @@ use DateTimeImmutable;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * The newest metadata document accepted for a service provider of a tenant (spec/saml.md S-6, S-8): the bytes as they
- * were read, never written again, their `validUntil` to the second, null when they carry none, and the instant they
- * were accepted.
- * One per service provider of a tenant, by its entity ID.
+ * The newest metadata document accepted for a peer of a tenant, whichever its role (spec/saml.md S-6, S-8, S-42): the
+ * bytes as they were read, never written again, their `validUntil` to the second, null when they carry none, and the
+ * instant they were accepted. One per peer of a role of a tenant, by its entity ID.
  *
  * The rule against a rollback is this row's own (section 6.2 step 6), and it holds a document read under the signers
  * the declaration pins, which an older copy signed by the same key would pass as well: such a document is older than
@@ -27,14 +25,14 @@ use Symfony\Component\Uid\Uuid;
  * document is refused rather than taken. A document its channel vouches for replaces the accepted one whatever its
  * `validUntil`, the channel vouching for the newer reading as it vouched for the older one, so that a document a host
  * held by somebody else wrote with a far `validUntil` is replaced at the next refresh and pins nothing (S-6).
+ *
+ * Each role keeps its documents in a table of its own, sealed in the family of that table (decision 0018), so the row
+ * of a role is a class of its own, which classifies its document under that family and adds nothing else: the rule is
+ * written here once for both. What it holds is written from the scope of that class too, when the mapping hydrates a
+ * row, which is why it is protected and not private.
  */
-final class AcceptedMetadata implements ClassifiedFieldsInterface
+abstract class AcceptedMetadata implements ClassifiedFieldsInterface
 {
-    /**
-     * The family the document is sealed in, the name of its table without the prefix of the bundle (decision 0018).
-     */
-    public const string FAMILY = 'saml_service_provider';
-
     /**
      * @throws InvalidArgumentException when the document is empty
      */
@@ -42,9 +40,9 @@ final class AcceptedMetadata implements ClassifiedFieldsInterface
         public readonly Uuid $id,
         public readonly Tenant $tenant,
         public readonly string $entityId,
-        public private(set) string $document,
-        public private(set) ?DateTimeImmutable $validUntil,
-        public private(set) DateTimeImmutable $acceptedAt,
+        public protected(set) string $document,
+        public protected(set) ?DateTimeImmutable $validUntil,
+        public protected(set) DateTimeImmutable $acceptedAt,
     ) {
         if ($document === '') {
             throw new InvalidArgumentException('An accepted metadata document holds the bytes that were read (spec/saml.md S-8).');
@@ -68,7 +66,7 @@ final class AcceptedMetadata implements ClassifiedFieldsInterface
      *                                  then kept
      * @throws InvalidArgumentException when the document is another entity's: a programming error of the caller
      */
-    public function replaceWith(ServiceProviderMetadata $metadata, string $document, DateTimeImmutable $at): void
+    public function replaceWith(PeerMetadataInterface $metadata, string $document, DateTimeImmutable $at): void
     {
         if ($metadata->entityId !== $this->entityId) {
             throw new InvalidArgumentException('An accepted metadata document is replaced by a document of its own entity (spec/saml.md section 6.2 step 6).');
@@ -113,8 +111,9 @@ final class AcceptedMetadata implements ClassifiedFieldsInterface
     }
 
     /**
-     * The document is sealed (S-8): an `md:ContactPerson` names people, their electronic addresses and their
-     * telephone numbers. The entity ID names a service and is what a service provider is found by.
+     * What every row keeps besides its document, which the row of each role classifies, sealed in the family of its
+     * table (S-8): an `md:ContactPerson` names people, their electronic addresses and their telephone numbers. The
+     * entity ID names a service and is what a peer is found by.
      *
      * @return array<string, FieldClassificationInterface>
      */
@@ -123,8 +122,7 @@ final class AcceptedMetadata implements ClassifiedFieldsInterface
         return [
             'id' => new NoPersonalDatum(Reason::DRAWN_AT_RANDOM),
             'tenant' => new NoPersonalDatum(Reason::THE_TENANT),
-            'entityId' => new NoPersonalDatum('names a service provider, an application and never a person'),
-            'document' => new Sealed(self::FAMILY),
+            'entityId' => new NoPersonalDatum('names a service provider or an identity provider, an application and never a person'),
             'validUntil' => new NoPersonalDatum(Reason::NAMES_NO_PERSON),
             'acceptedAt' => new NoPersonalDatum(Reason::NAMES_NO_PERSON),
         ];

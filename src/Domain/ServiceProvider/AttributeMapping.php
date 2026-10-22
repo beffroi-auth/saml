@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Saml\Domain\ServiceProvider;
 
 use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Saml\Domain\Metadata\Lexical;
 
 /**
  * A claim of the provider sent to a service provider as a SAML attribute (spec/saml.md section 5.2, Core §2.7.3.1):

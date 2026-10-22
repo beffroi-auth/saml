@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace Beffroi\Saml\Port;
 
-use Beffroi\Saml\Domain\ServiceProvider\MetadataLocation;
+use Beffroi\Saml\Domain\Metadata\MetadataLocation;
 use Beffroi\Saml\Exception\MetadataRefusedException;
 
 /**
- * The bytes of the metadata of a service provider at the location its declaration names (spec/saml.md section 6.2
- * step 2): the bundle's, which holds the HTTP client and the file system.
+ * The bytes of the metadata of a peer at the location its declaration names, a service provider's or an upstream
+ * identity provider's (spec/saml.md section 6.2 step 2, section 6.10 step 2): the bundle's, which holds the HTTP
+ * client and the file system.
  */
 interface MetadataFetcherInterface
 {
