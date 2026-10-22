@@ -46,7 +46,10 @@ accepted, and refused without a key for signing or with a single sign-on service
 it sends one of them for an interaction of the browser: written by the model, signed by the key of the tenant, sent to
 the single sign-on service of the accepted metadata of that provider over HTTP-Redirect, or over HTTP-POST when it
 offers no other, asking for a fresh login when the client did, its `RelayState` a random reference to what the browser
-remembers of it and nothing else.
+remembers of it and nothing else. And the key each of them encrypts an assertion for, one per provider, kept by the
+KMS and rotated as every key of the tenant, never the key of another provider: its certificate is published in
+metadata of the service provider given to that provider alone, the next one first, and the key the model is given with
+a provider opens what that provider encrypted and nothing another one did.
 
 The package requires PHP 8.4 or later, `beffroi/core`, `beffroi/saml2-model`, `beffroi/saml2-bindings`,
 `beffroi/xml-security` and `spomky-labs/pki-framework`.
