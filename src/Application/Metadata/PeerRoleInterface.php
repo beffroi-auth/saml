@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Saml\Application\Metadata;
 
 use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Saml\Domain\Metadata\AcceptedMetadata;
 use Beffroi\Saml\Domain\Metadata\PeerInterface;
 use Beffroi\Saml\Domain\Metadata\PeerMetadataInterface;
@@ -37,9 +38,8 @@ interface PeerRoleInterface
      * held to what this role requires of it: its entity ID the declared one, its role in it, its keys and its
      * endpoints (section 6.2 steps 3 to 5, section 6.10 steps 3 and 4).
      *
-     * @param TPeer $peer
-     *
      * @throws MetadataRefusedException
+     * @throws InvalidArgumentException when the peer is one of another role: a programming error of the caller
      */
     public function read(PeerInterface $peer, string $document): PeerMetadataInterface;
 

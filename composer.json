@@ -19,6 +19,7 @@
     ],
     "require": {
         "php": ">=8.4",
+        "ext-intl": "*",
         "beffroi/core": "self.version",
         "beffroi/saml2-bindings": "self.version",
         "beffroi/saml2-model": "self.version",

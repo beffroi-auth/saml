@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Saml\Application\ServiceProvider;
 
 use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Saml\Application\Metadata\PeerRoleInterface;
 use Beffroi\Saml\Domain\Metadata\PeerInterface;
 use Beffroi\Saml\Domain\Metadata\PeerMetadataInterface;
@@ -46,11 +47,12 @@ final readonly class ServiceProviderRole implements PeerRoleInterface
 
     /**
      * Section 6.2 steps 3 to 5.
-     *
-     * @param ServiceProvider $peer
      */
     public function read(PeerInterface $peer, string $document): ServiceProviderMetadata
     {
+        if (! $peer instanceof ServiceProvider) {
+            throw new InvalidArgumentException('The role of the service providers reads the metadata of a service provider (spec/saml.md section 6.2).');
+        }
         $metadata = $peer->readsSigned() ? $this->reader->readSigned($document, $peer->metadataSigners) : $this->reader->readTrusted($document);
         if ($metadata->entityId !== $peer->entityId) {
             throw new MetadataRefusedException('The metadata name another entity than the service provider declared (spec/saml.md S-5).');

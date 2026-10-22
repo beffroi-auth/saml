@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Saml\Application\Upstream;
 
 use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Saml\Application\Metadata\PeerRoleInterface;
 use Beffroi\Saml\Domain\Metadata\PeerInterface;
 use Beffroi\Saml\Domain\Metadata\PeerMetadataInterface;
@@ -45,11 +46,12 @@ final readonly class UpstreamIdentityProviderRole implements PeerRoleInterface
 
     /**
      * Section 6.10 steps 3 and 4.
-     *
-     * @param UpstreamIdentityProvider $peer
      */
     public function read(PeerInterface $peer, string $document): UpstreamMetadata
     {
+        if (! $peer instanceof UpstreamIdentityProvider) {
+            throw new InvalidArgumentException('The role of the upstream identity providers reads the metadata of an upstream identity provider (spec/saml.md section 6.10).');
+        }
         $metadata = $peer->readsSigned() ? $this->reader->readSigned($document, $peer->metadataSigners) : $this->reader->readTrusted($document);
         if ($metadata->entityId !== $peer->entityId) {
             throw new MetadataRefusedException('The metadata name another entity than the identity provider declared (spec/saml.md S-42).');

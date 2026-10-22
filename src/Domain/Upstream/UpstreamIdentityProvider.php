@@ -62,6 +62,9 @@ final readonly class UpstreamIdentityProvider implements PeerInterface
         if ($subjectAttribute !== null && ! Lexical::isName($subjectAttribute)) {
             throw new InvalidArgumentException('The attribute of the subject is not empty, holds no whitespace and is at most 1024 characters (spec/saml.md S-45).');
         }
+        if ($subjectAttribute === $emailAttribute) {
+            throw new InvalidArgumentException('The attribute of the subject is the attribute of the e-mail, and an address is given again to another person (spec/saml.md S-45).');
+        }
     }
 
     /**
