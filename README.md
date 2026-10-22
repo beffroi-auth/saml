@@ -34,7 +34,11 @@ part in a session being recorded; and Single Logout started by the identity prov
 the page of the account or for a service provider that asked: once the sessions have ended, every other service
 provider of them is sent a signed `LogoutRequest` through the browser, one after the other, its answer read before the
 next, the chain kept by the provider and played once, the answer to the service provider that asked saying
-`PartialLogout` when one of the others did not log out.
+`PartialLogout` when one of the others did not log out. Sub-spike 9d, the service provider role
+([beffroi-auth/beffroi#646](https://github.com/beffroi-auth/beffroi/issues/646)), adds the service provider of a
+tenant: an entity ID of its own, never the one of its identity provider, and metadata that announce its requests
+signed and ask for signed assertions, one assertion consumer service on HTTP-POST and no single logout, under the same
+SAML key, which either role draws; a role the deployment does not enable serves no metadata.
 
 The package requires PHP 8.4 or later, `beffroi/core`, `beffroi/saml2-model`, `beffroi/saml2-bindings`,
 `beffroi/xml-security` and `spomky-labs/pki-framework`.
