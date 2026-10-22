@@ -42,7 +42,11 @@ SAML key, which either role draws; a role the deployment does not enable serves 
 providers upstream of it, declared in the configuration of the deployment with the e-mail domains each answers for,
 one provider per domain, and the attributes an assertion of it is read for: their metadata read from a file or an
 `https` URL by the objects that read the metadata of a service provider, never expired nor older than the document
-accepted, and refused without a key for signing or with a single sign-on service that is not `https`.
+accepted, and refused without a key for signing or with a single sign-on service that is not `https`. And the request
+it sends one of them for an interaction of the browser: written by the model, signed by the key of the tenant, sent to
+the single sign-on service of the accepted metadata of that provider over HTTP-Redirect, or over HTTP-POST when it
+offers no other, asking for a fresh login when the client did, its `RelayState` a random reference to what the browser
+remembers of it and nothing else.
 
 The package requires PHP 8.4 or later, `beffroi/core`, `beffroi/saml2-model`, `beffroi/saml2-bindings`,
 `beffroi/xml-security` and `spomky-labs/pki-framework`.
