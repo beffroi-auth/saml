@@ -26,4 +26,12 @@ interface AuthnRequestSenderInterface
      * @throws KmsUnavailableException when the KMS does not answer to open it
      */
     public function send(Tenant $tenant, UpstreamAuthnRequest $request): SentAuthnRequest;
+
+    /**
+     * The Location of the single sign-on service a request to that provider is written to, by the rule send() writes it
+     * by (S-48): what the page that starts a sign-on names in its "form-action" (S-61).
+     *
+     * @throws UpstreamSignOnRefusedException when the provider has no accepted document, or the reading back refuses it
+     */
+    public function destination(Tenant $tenant, string $identityProvider): string;
 }

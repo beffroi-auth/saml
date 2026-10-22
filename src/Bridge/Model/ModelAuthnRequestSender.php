@@ -88,6 +88,11 @@ final readonly class ModelAuthnRequestSender implements AuthnRequestSenderInterf
         return new SentAuthnRequest($request, $authnRequest->id, $message);
     }
 
+    public function destination(Tenant $tenant, string $identityProvider): string
+    {
+        return $this->singleSignOnService($tenant, $identityProvider)->location;
+    }
+
     /**
      * S-48: the single sign-on service of the accepted document of the provider, on HTTP-Redirect when the document
      * lists one, whatever their order, and else the first one, which the model keeps on HTTP-POST.

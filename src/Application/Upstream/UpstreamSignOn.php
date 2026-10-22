@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Beffroi\Saml\Application\Upstream;
 
 use Beffroi\Core\Domain\Encoding\Base64Url;
+use function array_unique;
+use function array_values;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\KeyNotFoundException;
 use Beffroi\Core\Exception\KmsUnavailableException;
@@ -61,5 +63,26 @@ final readonly class UpstreamSignOn
             Base64Url::encode(random_bytes(self::REFERENCE_BYTES)),
             $this->clock->now(),
         ));
+    }
+
+    /**
+     * Where a sign-on of the tenant may send a browser (S-61): the single sign-on service each provider it declares
+     * would be sent a request at, in the order of the declarations, each once; a provider a sign-on would refuse, with
+     * no accepted document or one the reading back refuses, sends a browser nowhere and is left out.
+     *
+     * @return list<string>
+     */
+    public function destinations(Tenant $tenant): array
+    {
+        $destinations = [];
+        foreach ($this->providers->of($tenant) as $provider) {
+            try {
+                $destinations[] = $this->sender->destination($tenant, $provider->entityId);
+            } catch (UpstreamSignOnRefusedException) {
+                // the sign-on of that provider is refused before the browser leaves (S-48)
+            }
+        }
+
+        return array_values(array_unique($destinations));
     }
 }
