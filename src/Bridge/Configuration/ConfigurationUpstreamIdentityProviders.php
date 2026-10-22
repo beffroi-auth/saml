@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace Beffroi\Saml\Bridge\Configuration;
 
 use function array_values;
+use Beffroi\Core\Domain\Identity\EmailDomain;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Saml\Bridge\Model\ModelEntityId;
 use Beffroi\Saml\Domain\Metadata\Certificate;
 use Beffroi\Saml\Domain\Metadata\MetadataLocation;
-use Beffroi\Saml\Domain\Upstream\EmailDomain;
 use Beffroi\Saml\Domain\Upstream\GroupMapping;
 use Beffroi\Saml\Domain\Upstream\ProfileAttribute;
 use Beffroi\Saml\Domain\Upstream\UpstreamIdentityProvider;

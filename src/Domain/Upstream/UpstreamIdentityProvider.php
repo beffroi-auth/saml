@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Beffroi\Saml\Domain\Upstream;
 
 use function array_key_exists;
+use Beffroi\Core\Domain\Identity\EmailDomain;
+use Beffroi\Core\Domain\Identity\Profile;
+use Beffroi\Core\Domain\Identity\UpstreamProvider;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Saml\Domain\Metadata\Certificate;
 use Beffroi\Saml\Domain\Metadata\Lexical;
@@ -94,6 +97,27 @@ final readonly class UpstreamIdentityProvider implements PeerInterface
                 $entityId,
             ));
         }
+    }
+
+    /**
+     * The upstream provider of the core this declaration is (S-60): its entity ID its name, its domains, and the claims
+     * of the profile of the core its attributes fill, so that the login page, the first sign-in and the refusal of a
+     * local credential read its domains by the one rule of the core, whatever protocol declared it. A telephone number,
+     * which an attribute may fill (S-45) and which is no claim of that profile (Profile::claims()), is not among them:
+     * the sign-in that reads an assertion reads it apart (issue #784), and a declaration that fills one is a provider
+     * all the same, and never a login page that fails.
+     */
+    public function provider(): UpstreamProvider
+    {
+        $held = Profile::empty()->claims();
+        $claims = [];
+        foreach ($this->profile as $attribute) {
+            if (array_key_exists($attribute->claim, $held)) {
+                $claims[] = $attribute->claim;
+            }
+        }
+
+        return new UpstreamProvider($this->entityId, $this->domains, $claims);
     }
 
     /**
