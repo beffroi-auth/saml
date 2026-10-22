@@ -38,7 +38,11 @@ next, the chain kept by the provider and played once, the answer to the service 
 ([beffroi-auth/beffroi#646](https://github.com/beffroi-auth/beffroi/issues/646)), adds the service provider of a
 tenant: an entity ID of its own, never the one of its identity provider, and metadata that announce its requests
 signed and ask for signed assertions, one assertion consumer service on HTTP-POST and no single logout, under the same
-SAML key, which either role draws; a role the deployment does not enable serves no metadata.
+SAML key, which either role draws; a role the deployment does not enable serves no metadata. And the identity
+providers upstream of it, declared in the configuration of the deployment with the e-mail domains each answers for,
+one provider per domain, and the attributes an assertion of it is read for: their metadata read from a file or an
+`https` URL by the objects that read the metadata of a service provider, never expired nor older than the document
+accepted, and refused without a key for signing or with a single sign-on service that is not `https`.
 
 The package requires PHP 8.4 or later, `beffroi/core`, `beffroi/saml2-model`, `beffroi/saml2-bindings`,
 `beffroi/xml-security` and `spomky-labs/pki-framework`.
