@@ -16,8 +16,6 @@ use Beffroi\Saml\Port\ServedClaimsInterface;
 use Beffroi\Saml\Port\ServiceProvidersInterface;
 use function in_array;
 use function is_array;
-use function is_bool;
-use function is_string;
 use function sprintf;
 
 /**
@@ -82,11 +80,11 @@ final readonly class ConfigurationServiceProviders implements ServiceProvidersIn
             throw new InvalidArgumentException('a declaration is a map (spec/saml.md section 5.2).');
         }
         $signers = [];
-        foreach (self::list($definition, 'metadata_signers') as $signer) {
-            $signers[] = new Certificate(self::string($signer, 'metadata_signers'));
+        foreach (DeclarationMembers::list($definition, 'metadata_signers') as $signer) {
+            $signers[] = new Certificate(DeclarationMembers::string($signer, 'metadata_signers'));
         }
         $attributes = [];
-        foreach (self::map($definition, 'attributes') as $name => $attribute) {
+        foreach (DeclarationMembers::map($definition, 'attributes') as $name => $attribute) {
             $mapping = self::attribute((string) $name, $attribute);
             if (! in_array($mapping->claim, $served, true)) {
                 throw new InvalidArgumentException(sprintf(
@@ -100,11 +98,11 @@ final readonly class ConfigurationServiceProviders implements ServiceProvidersIn
 
         return new ServiceProvider(
             $entityId,
-            new MetadataLocation(self::string($definition['metadata'] ?? null, 'metadata')),
+            new MetadataLocation(DeclarationMembers::string($definition['metadata'] ?? null, 'metadata')),
             $signers,
             $attributes,
-            self::boolean($definition, 'encrypt_assertions', false),
-            self::boolean($definition, 'signs_authn_requests', true),
+            DeclarationMembers::boolean($definition, 'encrypt_assertions', false),
+            DeclarationMembers::boolean($definition, 'signs_authn_requests', true),
         );
     }
 
@@ -116,63 +114,17 @@ final readonly class ConfigurationServiceProviders implements ServiceProvidersIn
         if (! is_array($definition)) {
             throw new InvalidArgumentException('an attribute is a map (spec/saml.md section 5.2).');
         }
-        $format = self::string($definition['name_format'] ?? 'uri', 'name_format');
+        $format = DeclarationMembers::string($definition['name_format'] ?? 'uri', 'name_format');
         $friendlyName = $definition['friendly_name'] ?? null;
 
         return new AttributeMapping(
-            self::string($definition['claim'] ?? null, 'claim'),
+            DeclarationMembers::string($definition['claim'] ?? null, 'claim'),
             $name,
             AttributeNameFormat::named($format) ?? throw new InvalidArgumentException(sprintf(
                 '"%s" is not a name format of Core section 8.2: uri, basic or unspecified.',
                 $format,
             )),
-            $friendlyName === null ? null : self::string($friendlyName, 'friendly_name'),
+            $friendlyName === null ? null : DeclarationMembers::string($friendlyName, 'friendly_name'),
         );
-    }
-
-    /**
-     * @throws InvalidArgumentException
-     */
-    private static function string(mixed $value, string $member): string
-    {
-        return is_string($value) ? $value : throw new InvalidArgumentException(sprintf('"%s" is a string.', $member));
-    }
-
-    /**
-     * @param array<array-key, mixed> $definition
-     *
-     * @throws InvalidArgumentException
-     */
-    private static function boolean(array $definition, string $member, bool $default): bool
-    {
-        $value = $definition[$member] ?? $default;
-
-        return is_bool($value) ? $value : throw new InvalidArgumentException(sprintf('"%s" is a boolean.', $member));
-    }
-
-    /**
-     * @param array<array-key, mixed> $definition
-     *
-     * @return array<array-key, mixed>
-     *
-     * @throws InvalidArgumentException
-     */
-    private static function map(array $definition, string $member): array
-    {
-        $value = $definition[$member] ?? [];
-
-        return is_array($value) ? $value : throw new InvalidArgumentException(sprintf('"%s" is a map.', $member));
-    }
-
-    /**
-     * @param array<array-key, mixed> $definition
-     *
-     * @return list<mixed>
-     *
-     * @throws InvalidArgumentException
-     */
-    private static function list(array $definition, string $member): array
-    {
-        return array_values(self::map($definition, $member));
     }
 }
