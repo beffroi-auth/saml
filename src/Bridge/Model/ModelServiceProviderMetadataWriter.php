@@ -21,12 +21,12 @@ use Beffroi\Xml\Core\Serializer;
  * (spec/saml.md S-39, section 6.9 step 4): one md:EntityDescriptor whose entity ID is the one of S-38, one
  * md:SPSSODescriptor that says its requests are signed and wants the assertions it receives signed, a signing
  * certificate per SAML key in service, and one assertion consumer service on HTTP-POST, of index 0; the cacheDuration
- * of S-12 on the md:EntityDescriptor.
+ * of S-12 on the md:EntityDescriptor; an encryption certificate per key of the upstream identity provider the
+ * description is written for, in its order, and none when it is written for none (S-65, section 6.12 step 4).
  *
  * Unsigned, as the metadata of the identity provider are (section 6.1 step 5). No validUntil, no single logout service
- * (Single Logout with an upstream identity provider is out of sub-spike 9d, section 11), no key for encryption (issue
- * #787) and no NameID format, the format the service provider asks for being the NameIDPolicy of its request (issue
- * #783).
+ * (Single Logout with an upstream identity provider is out of sub-spike 9d, section 11) and no NameID format, the
+ * format the service provider asks for being the NameIDPolicy of its request (issue #783).
  */
 final readonly class ModelServiceProviderMetadataWriter implements ServiceProviderMetadataWriterInterface
 {
@@ -53,7 +53,7 @@ final readonly class ModelServiceProviderMetadataWriter implements ServiceProvid
                 new ServiceProvider(
                     $entityId,
                     array_map(static fn (Certificate $certificate): string => $certificate->base64, $description->signingCertificates),
-                    [],
+                    array_map(static fn (Certificate $certificate): string => $certificate->base64, $description->encryptionCertificates),
                     new IndexedEndpoints([
                         new IndexedEndpoint(Binding::HttpPost, $description->endpoints->assertionConsumerService, self::ASSERTION_CONSUMER_SERVICE_INDEX),
                     ]),

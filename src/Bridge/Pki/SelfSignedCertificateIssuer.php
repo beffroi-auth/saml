@@ -8,6 +8,8 @@ use Beffroi\Core\Domain\Key\TenantKey;
 use Beffroi\Core\Domain\Key\UnsealedKey;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Core\Exception\RuntimeException;
+use Beffroi\Core\Domain\Key\KeyUse;
+use Beffroi\Saml\Domain\Key\SamlEncryptionAlgorithmInterface;
 use Beffroi\Saml\Domain\Key\SamlSigningAlgorithmInterface;
 use Beffroi\Saml\Domain\Metadata\Certificate;
 use Beffroi\Saml\Port\CertificateIssuerInterface;
@@ -39,9 +41,13 @@ use Throwable;
 /**
  * The self-signed certificate around a SAML key of a tenant, built with pki-framework (spec/saml.md section 6.1 step
  * 2, S-3): X.509 version 3, a serial number drawn from the "kid", the slug of the tenant for its subject and its
- * issuer, valid from the creation of the key, to the second, for ten years, the public key of the key's JWK, keyUsage
- * digitalSignature alone, signed sha256WithRSAEncryption by the key itself, its parameters NULL as RFC 4055 §5 requires
- * of a producer, whose PKCS #1 v1.5 signature is deterministic: built twice, it is the same bytes.
+ * issuer, valid from the creation of the key, to the second, for ten years, the public key of the key's JWK, one
+ * keyUsage, signed sha256WithRSAEncryption by the key itself, its parameters NULL as RFC 4055 §5 requires of a
+ * producer, whose PKCS #1 v1.5 signature is deterministic: built twice, it is the same bytes.
+ *
+ * The keyUsage is the use of the key (RFC 5280 §4.2.1.3): digitalSignature for the SAML signing key, keyEncipherment
+ * for the key an upstream identity provider encrypts for (S-65), which transports a session key and signs nothing but
+ * its own certificate, a notation of the key a peer does not verify as a path.
  *
  * It is verified under its own public key before it is returned, the result of openssl_verify() compared to 1 and
  * never to a boolean: the function answers -1 on an error, which PHP holds for true. The private half is turned into
@@ -59,9 +65,9 @@ final readonly class SelfSignedCertificateIssuer implements CertificateIssuerInt
     public function selfSigned(UnsealedKey $key): Certificate
     {
         $tenantKey = $key->key;
-        if (! $tenantKey->algorithm instanceof SamlSigningAlgorithmInterface) {
+        if (! $tenantKey->algorithm instanceof SamlSigningAlgorithmInterface && ! $tenantKey->algorithm instanceof SamlEncryptionAlgorithmInterface) {
             throw new InvalidArgumentException(sprintf(
-                'The key "%s" is of %s, not a SAML signing key: its certificate is not one the metadata publishes (spec/saml.md section 6.1 step 2).',
+                'The key "%s" is of %s, not a SAML key: its certificate is not one the metadata publishes (spec/saml.md section 6.1 step 2).',
                 $tenantKey->kid,
                 $tenantKey->algorithm->name(),
             ));
@@ -106,8 +112,16 @@ final readonly class SelfSignedCertificateIssuer implements CertificateIssuerInt
         return TBSCertificate::create($name, $privateKeyInfo->publicKeyInfo(), $name, $validity)
             ->withVersion(TBSCertificate::VERSION_3)
             ->withSerialNumber(self::serialNumber($key))
-            ->withExtensions(Extensions::create(KeyUsageExtension::create(true, KeyUsageExtension::DIGITAL_SIGNATURE)))
+            ->withExtensions(Extensions::create(KeyUsageExtension::create(true, self::keyUsage($key))))
             ->sign(SHA256WithRSAEncryptionAlgorithmIdentifier::create(NullType::create()), $privateKeyInfo);
+    }
+
+    /**
+     * What the key is for, said in the terms of X.509 (RFC 5280 §4.2.1.3): a key of use "enc" transports keys.
+     */
+    private static function keyUsage(TenantKey $key): int
+    {
+        return $key->algorithm->keyUse() === KeyUse::Encryption ? KeyUsageExtension::KEY_ENCIPHERMENT : KeyUsageExtension::DIGITAL_SIGNATURE;
     }
 
     /**

@@ -14,7 +14,6 @@ use Beffroi\Core\Port\TenantKeyRepositoryInterface;
 use Beffroi\Saml\Domain\Key\SamlSigningAlgorithmInterface;
 use Beffroi\Saml\Domain\Metadata\Certificate;
 use Beffroi\Saml\Port\CertificateIssuerInterface;
-use function str_starts_with;
 
 /**
  * The certificate of each SAML key of a tenant in service (spec/saml.md section 6.1 step 2): staged, active and
@@ -29,18 +28,16 @@ use function str_starts_with;
  * first and once to sign, and once when the process signs first, the certificate then built from the key the signature
  * opened (ofOpened(), S-37). A certificate built again is the same bytes, so two processes publish the same one.
  */
-final class SigningCertificates
+final readonly class SigningCertificates
 {
-    /**
-     * @var array<string, Certificate> by tenant and kid
-     */
-    private array $built = [];
+    private BuiltCertificates $built;
 
     public function __construct(
-        private readonly TenantKeyRepositoryInterface $keys,
-        private readonly KeySealerInterface $sealer,
-        private readonly CertificateIssuerInterface $issuer,
+        private TenantKeyRepositoryInterface $keys,
+        KeySealerInterface $sealer,
+        CertificateIssuerInterface $issuer,
     ) {
+        $this->built = new BuiltCertificates($sealer, $issuer);
     }
 
     /**
@@ -52,24 +49,12 @@ final class SigningCertificates
      */
     public function of(Tenant $tenant): array
     {
+        $inService = $this->keys->findInService($tenant);
+        $this->built->keepInService($tenant, $inService);
         $certificates = [];
-        $inService = [];
-        foreach ($this->keys->findInService($tenant) as $key) {
-            if (! $key->algorithm instanceof SamlSigningAlgorithmInterface) {
-                continue;
-            }
-            $index = self::index($tenant, $key->kid);
-            $inService[$index] = true;
-            $certificates[] =
-                $this->built[$index] ??= $this->issuer->selfSigned(new UnsealedKey(
-                    $key,
-                    $this->sealer->unseal($tenant, $key->sealedPrivateJwk),
-                ));
-        }
-        $prefix = self::index($tenant, '');
-        foreach ($this->built as $index => $certificate) {
-            if (! isset($inService[$index]) && str_starts_with($index, $prefix)) {
-                unset($this->built[$index]);
+        foreach ($inService as $key) {
+            if ($key->algorithm instanceof SamlSigningAlgorithmInterface) {
+                $certificates[] = $this->built->of($key);
             }
         }
 
@@ -88,11 +73,6 @@ final class SigningCertificates
      */
     public function ofOpened(UnsealedKey $key): Certificate
     {
-        return $this->built[self::index($key->key->tenant, $key->key->kid)] ??= $this->issuer->selfSigned($key);
-    }
-
-    private static function index(Tenant $tenant, string $kid): string
-    {
-        return $tenant->id->toRfc4122() . '/' . $kid;
+        return $this->built->ofOpened($key);
     }
 }
