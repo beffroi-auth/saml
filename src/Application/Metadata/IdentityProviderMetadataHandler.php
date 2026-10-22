@@ -11,7 +11,7 @@ use Beffroi\Core\Exception\KmsUnavailableException;
 use Beffroi\Core\Exception\RuntimeException;
 use Beffroi\Saml\Domain\Key\SamlSigningAlgorithmInterface;
 use Beffroi\Saml\Domain\Metadata\IdentityProviderDescription;
-use Beffroi\Saml\Domain\Metadata\IdentityProviderMetadata;
+use Beffroi\Saml\Domain\Metadata\PublishedMetadata;
 use Beffroi\Saml\Port\IdentityProviderEndpointsInterface;
 use Beffroi\Saml\Port\MetadataWriterInterface;
 use LogicException;
@@ -55,8 +55,8 @@ final readonly class IdentityProviderMetadataHandler
         private int $cacheDuration = self::DEFAULT_CACHE_DURATION,
         int $stagingDelay = SamlSigningAlgorithmInterface::STAGING_DELAY,
     ) {
-        IdentityProviderMetadata::assertCacheLifetime($maxAge);
-        IdentityProviderMetadata::assertCacheDuration($cacheDuration, $stagingDelay);
+        PublishedMetadata::assertCacheLifetime($maxAge);
+        PublishedMetadata::assertCacheDuration($cacheDuration, $stagingDelay);
     }
 
     /**
@@ -65,7 +65,7 @@ final readonly class IdentityProviderMetadataHandler
      * @throws LogicException when the routes are not mounted under the issuer of the tenant
      * @throws RuntimeException when a certificate cannot be built
      */
-    public function handle(Tenant $tenant): IdentityProviderMetadata
+    public function handle(Tenant $tenant): PublishedMetadata
     {
         $certificates = $this->certificates->of($tenant);
         if ($certificates === []) {
@@ -75,7 +75,7 @@ final readonly class IdentityProviderMetadataHandler
             ));
         }
 
-        return new IdentityProviderMetadata(
+        return new PublishedMetadata(
             $this->writer->write(new IdentityProviderDescription(
                 $this->endpoints->locate($tenant),
                 $certificates,

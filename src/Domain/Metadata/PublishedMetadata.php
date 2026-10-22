@@ -8,13 +8,13 @@ use Beffroi\Core\Exception\InvalidArgumentException;
 use function sprintf;
 
 /**
- * The answer of the metadata endpoint of the identity provider of a tenant (spec/saml.md section 6.1 step 6): the
- * serialized md:EntityDescriptor, its media type, and how long an HTTP cache may hold it, the max-age of the keys of
- * the tenant, minutes, so that a service provider that fetches it finds the next certificate far inside the staging
- * window of a SAML key (S-2, S-12); how long the service provider keeps what it fetched is the cacheDuration the
- * document carries.
+ * The answer of a metadata endpoint of a tenant, the one of its identity provider or of its service provider
+ * (spec/saml.md section 6.1 step 6, section 6.9 step 5): the serialized md:EntityDescriptor, its media type, and how
+ * long an HTTP cache may hold it, the max-age of the keys of the tenant, minutes, so that a peer that fetches it finds
+ * the next certificate far inside the staging window of a SAML key (S-2, S-12, S-40); how long the peer keeps what it
+ * fetched is the cacheDuration the document carries.
  */
-final readonly class IdentityProviderMetadata
+final readonly class PublishedMetadata
 {
     /**
      * The media type of SAML metadata.
@@ -42,7 +42,7 @@ final readonly class IdentityProviderMetadata
     }
 
     /**
-     * The rule of the lifetime, which the handler checks when it is built and the answer again when one is built by
+     * The rule of the lifetime, which each handler checks when it is built and the answer again when one is built by
      * hand: one rule, written here alone.
      *
      * @throws InvalidArgumentException when the lifetime is not a number of seconds
@@ -55,7 +55,7 @@ final readonly class IdentityProviderMetadata
     }
 
     /**
-     * The rule of S-12, which the handler checks when it is built and the configuration of the bundle when it is read:
+     * The rule of S-12, which each handler checks when it is built and the configuration of the bundle when it is read:
      * a service provider that honours the cacheDuration fetches the metadata again, and the next certificate with it,
      * before the staged key signs, which a cacheDuration as long as the staging window would not leave it time for.
      *
