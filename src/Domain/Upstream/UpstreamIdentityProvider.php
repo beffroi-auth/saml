@@ -18,7 +18,8 @@ use function sprintf;
  * identity provider whose assertions the service provider of the tenant receives. Its entity ID, where its metadata
  * are read from and who signs them; the e-mail domains it answers for (S-44); and what an assertion of it is read for
  * (S-45): the attribute of the e-mail, the attributes that fill the profile, the attribute that names a person when
- * the NameID is not persistent, and the groups. Never registered by a request nor through a page: a declaration goes
+ * the NameID is not persistent, and the groups; and whether its assertions must arrive encrypted (S-67), which the
+ * assertion consumer service applies (issue #784). Never registered by a request nor through a page: a declaration goes
  * away when its block does. Its entity ID is held to the rule of the model where the declaration is read
  * (ModelEntityId), the model being no dependency of the domain.
  */
@@ -38,6 +39,7 @@ final readonly class UpstreamIdentityProvider implements PeerInterface
      * @param list<Certificate> $metadataSigners the certificates the metadata are verified under, none when the channel is trusted
      * @param list<EmailDomain> $domains the domains it answers for, one at least
      * @param list<ProfileAttribute> $profile the attributes that fill the profile, one per claim
+     * @param bool $requireEncryptedAssertions whether an assertion of it in clear is refused (S-67)
      *
      * @throws InvalidArgumentException when the declaration does not hold together (section 6.10 step 1)
      */
@@ -50,6 +52,7 @@ final readonly class UpstreamIdentityProvider implements PeerInterface
         public array $profile = [],
         public ?string $subjectAttribute = null,
         public ?GroupMapping $groups = null,
+        public bool $requireEncryptedAssertions = false,
     ) {
         if (count($metadataSigners) > self::MAX_METADATA_SIGNERS) {
             throw new InvalidArgumentException('An identity provider pins at most 16 signers of its metadata (spec/saml.md section 7).');
