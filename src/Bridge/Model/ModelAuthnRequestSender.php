@@ -59,6 +59,17 @@ final readonly class ModelAuthnRequestSender implements AuthnRequestSenderInterf
     public function send(Tenant $tenant, UpstreamAuthnRequest $request): SentAuthnRequest
     {
         $endpoint = $this->singleSignOnService($tenant, $request->identityProvider);
+        // the key opened apart from the writing: a key Dsig refuses to sign with is a request refused, and a key whose
+        // private half is not the one of its public JWK a fault of the deployment, which goes on as it is
+        try {
+            $signing = $this->signing->of($tenant);
+        } catch (RefusedXml $exception) {
+            throw new UpstreamSignOnRefusedException(
+                'The request to the identity provider is one the model or the binding refuses to write (spec/saml.md S-48).',
+                0,
+                $exception,
+            );
+        }
         try {
             $authnRequest = new AuthnRequest(
                 SamlId::generate(),
@@ -70,7 +81,6 @@ final readonly class ModelAuthnRequestSender implements AuthnRequestSenderInterf
                 nameIdPolicy: new NameIdPolicy(NameIdFormat::Persistent->value, allowCreate: true),
                 forceAuthn: $request->forceAuthn,
             );
-            $signing = $this->signing->of($tenant);
             if ($endpoint->binding === Binding::HttpRedirect) {
                 $message = new RedirectedMessage($this->redirect->authnRequest($authnRequest, $signing, $request->relayState));
             } else {
