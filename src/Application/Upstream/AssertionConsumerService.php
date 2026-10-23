@@ -85,15 +85,18 @@ final readonly class AssertionConsumerService
             }
         }
 
+        $email = self::address($provider, $verified);
+
         return new UpstreamAssertion(
             $provider,
-            self::subject($provider, $verified),
-            self::address($provider, $verified),
+            self::subject($provider, $verified, $email),
+            $email,
             $claims,
             $phoneNumber,
             $provider->groups === null ? [] : $verified->values($provider->groups->attribute),
             $verified->authenticatedAt,
             AuthnContextMethods::of($verified->contextClass),
+            $verified->sessionNotOnOrAfter,
         );
     }
 
@@ -135,25 +138,51 @@ final readonly class AssertionConsumerService
     }
 
     /**
-     * S-55: the value of a persistent NameID, or else the one value of the attribute the declaration names; never an
-     * address.
+     * S-55: the value of a persistent NameID, or else the one value of the attribute the declaration names; never the
+     * address of the person, whatever names it.
      *
      * @throws AssertionRefusedException
      */
-    private static function subject(UpstreamIdentityProvider $provider, VerifiedAssertion $verified): string
+    private static function subject(UpstreamIdentityProvider $provider, VerifiedAssertion $verified, EmailAddress $email): string
     {
         if ($verified->persistent) {
-            return $verified->nameId;
-        }
-        if ($provider->subjectAttribute === null) {
+            $subject = $verified->nameId;
+        } elseif ($provider->subjectAttribute === null) {
             throw new AssertionRefusedException('The NameID is not persistent and the declaration names no attribute of the subject (spec/saml.md S-55).');
+        } else {
+            $subject = self::oneValue($verified, $provider->subjectAttribute);
+            if ($subject === null || $subject === '') {
+                throw new AssertionRefusedException('The attribute of the subject holds not one value (spec/saml.md S-55).');
+            }
         }
-        $subject = self::oneValue($verified, $provider->subjectAttribute);
-        if ($subject === null || $subject === '') {
-            throw new AssertionRefusedException('The attribute of the subject holds not one value (spec/saml.md S-55).');
+        if (self::isTheMailboxOf($subject, $email)) {
+            throw new AssertionRefusedException('The subject is the address of the person, which is given again to another (spec/saml.md S-55).');
         }
 
         return $subject;
+    }
+
+    /**
+     * S-55: whether a subject is the same mailbox as the address, its domain read by the one rule of the domain and its
+     * case folded; a subject that is no address is none.
+     */
+    private static function isTheMailboxOf(string $subject, EmailAddress $email): bool
+    {
+        try {
+            return self::asAddress($subject)->isTheSameMailboxAs($email);
+        } catch (InvalidArgumentException) {
+            return false;
+        }
+    }
+
+    /**
+     * An address with its domain written as its A-label (S-60), which the core's EmailAddress reads.
+     *
+     * @throws InvalidArgumentException when it holds no "@", or its domain or its local part is refused
+     */
+    private static function asAddress(string $address): EmailAddress
+    {
+        return new EmailAddress(substr($address, 0, (int) strrpos($address, '@')) . '@' . EmailDomain::ofAddress($address)->value);
     }
 
     /**
@@ -169,13 +198,10 @@ final readonly class AssertionConsumerService
             throw new AssertionRefusedException('The attribute of the e-mail holds not one value (spec/saml.md S-56).');
         }
         try {
-            return new EmailAddress(substr($address, 0, (int) strrpos($address, '@')) . '@' . EmailDomain::ofAddress($address)->value);
-        } catch (InvalidArgumentException $exception) {
-            throw new AssertionRefusedException(
-                'The attribute of the e-mail is no address whose domain the rule reads (spec/saml.md S-56, S-60).',
-                0,
-                $exception,
-            );
+            return self::asAddress($address);
+        } catch (InvalidArgumentException) {
+            // the refusal of the core names the address, which no exception of a refusal carries (S-53)
+            throw new AssertionRefusedException('The attribute of the e-mail is no address whose domain the rule reads (spec/saml.md S-56, S-60).');
         }
     }
 

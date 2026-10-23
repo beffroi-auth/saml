@@ -93,6 +93,7 @@ final readonly class ModelResponseReceiver implements ResponseReceiverInterface
             $assertion->authnStatement->authnInstant,
             $assertion->authnStatement->authnContextClassRef,
             $accepted->encrypted,
+            $assertion->authnStatement->sessionNotOnOrAfter,
         );
     }
 }

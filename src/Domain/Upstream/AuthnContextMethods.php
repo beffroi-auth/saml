@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Beffroi\Saml\Domain\Upstream;
 
+use function array_unique;
+use function array_values;
 use Beffroi\Core\Domain\Session\AuthenticationMethod;
 
 /**
@@ -60,11 +62,11 @@ final class AuthnContextMethods
      */
     public static function everyProvable(): array
     {
-        return [
-            new AuthenticationMethod(self::FEDERATED),
-            new AuthenticationMethod(AuthenticationMethod::PASSWORD),
-            new AuthenticationMethod(AuthenticationMethod::SMART_CARD),
-            new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD),
-        ];
+        $methods = [new AuthenticationMethod(self::FEDERATED)];
+        foreach (array_values(array_unique(self::EXACT)) as $exact) {
+            $methods[] = new AuthenticationMethod($exact);
+        }
+
+        return $methods;
     }
 }
