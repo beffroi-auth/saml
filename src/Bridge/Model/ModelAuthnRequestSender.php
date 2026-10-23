@@ -36,7 +36,8 @@ use InvalidArgumentException;
  * persistent NameIDPolicy that allows the provider to create the identifier, ForceAuthn when the request asks for it
  * (S-49); signed by the active SAML key of the tenant under RSA-SHA256 (TenantSigning), opened once the endpoint is
  * known, over the query string by RedirectSender for HTTP-Redirect, in its XML by PostSender for HTTP-POST; the
- * reference of S-50 as its RelayState.
+ * reference of S-50 as its RelayState; the hint of the address, when the request carries one, appended to the URL of
+ * HTTP-Redirect after its Signature, outside the octets it covers, and to the action of the form of HTTP-POST (S-68).
  *
  * A provider with no accepted document, one whose document the reading back refuses now, a request the model or the
  * binding refuses to write and a key Dsig refuses to sign with are UpstreamSignOnRefusedException: no request is sent.
@@ -82,10 +83,10 @@ final readonly class ModelAuthnRequestSender implements AuthnRequestSenderInterf
                 forceAuthn: $request->forceAuthn,
             );
             if ($endpoint->binding === Binding::HttpRedirect) {
-                $message = new RedirectedMessage($this->redirect->authnRequest($authnRequest, $signing, $request->relayState));
+                $message = new RedirectedMessage(self::hinted($this->redirect->authnRequest($authnRequest, $signing, $request->relayState), $request));
             } else {
                 $form = $this->post->authnRequest($authnRequest, $signing, $request->relayState);
-                $message = new PostedForm($form->action, $form->fields);
+                $message = new PostedForm(self::hinted($form->action, $request), $form->fields);
             }
         } catch (RefusedXml|InvalidArgumentException $exception) {
             throw new UpstreamSignOnRefusedException(
@@ -101,6 +102,15 @@ final readonly class ModelAuthnRequestSender implements AuthnRequestSenderInterf
     public function destination(Tenant $tenant, string $identityProvider): string
     {
         return $this->singleSignOnService($tenant, $identityProvider)->location;
+    }
+
+    /**
+     * S-68: the URL the binding wrote, with the hint of the address the request carries when it carries one, after
+     * whatever the binding signed.
+     */
+    private static function hinted(string $url, UpstreamAuthnRequest $request): string
+    {
+        return $request->addressHint?->appendedTo($url) ?? $url;
     }
 
     /**

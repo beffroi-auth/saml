@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Saml\Domain\Upstream;
 
 use function array_key_exists;
+use Beffroi\Core\Domain\Identity\EmailAddress;
 use Beffroi\Core\Domain\Identity\EmailDomain;
 use Beffroi\Core\Domain\Identity\Profile;
 use Beffroi\Core\Domain\Identity\UpstreamProvider;
@@ -21,10 +22,11 @@ use function sprintf;
  * identity provider whose assertions the service provider of the tenant receives. Its entity ID, where its metadata
  * are read from and who signs them; the e-mail domains it answers for (S-44); and what an assertion of it is read for
  * (S-45): the attribute of the e-mail, the attributes that fill the profile, the attribute that names a person when
- * the NameID is not persistent, and the groups; and whether its assertions must arrive encrypted (S-67), which the
- * assertion consumer service applies (issue #784). Never registered by a request nor through a page: a declaration goes
- * away when its block does. Its entity ID is held to the rule of the model where the declaration is read
- * (ModelEntityId), the model being no dependency of the domain.
+ * the NameID is not persistent, and the groups; whether its assertions must arrive encrypted (S-67), which the
+ * assertion consumer service applies (issue #784); and the parameter of its single sign-on service that takes the
+ * address a person gave the login page, when it reads one (S-68). Never registered by a request nor through a page: a
+ * declaration goes away when its block does. Its entity ID is held to the rule of the model where the declaration is
+ * read (ModelEntityId), the model being no dependency of the domain.
  */
 final readonly class UpstreamIdentityProvider implements PeerInterface
 {
@@ -43,6 +45,8 @@ final readonly class UpstreamIdentityProvider implements PeerInterface
      * @param list<EmailDomain> $domains the domains it answers for, one at least
      * @param list<ProfileAttribute> $profile the attributes that fill the profile, one per claim
      * @param bool $requireEncryptedAssertions whether an assertion of it in clear is refused (S-67)
+     * @param string|null $addressParameter the parameter of its single sign-on service that takes the address, null
+     *                                      when it reads none (S-68)
      *
      * @throws InvalidArgumentException when the declaration does not hold together (section 6.10 step 1)
      */
@@ -56,6 +60,7 @@ final readonly class UpstreamIdentityProvider implements PeerInterface
         public ?string $subjectAttribute = null,
         public ?GroupMapping $groups = null,
         public bool $requireEncryptedAssertions = false,
+        public ?string $addressParameter = null,
     ) {
         if (count($metadataSigners) > self::MAX_METADATA_SIGNERS) {
             throw new InvalidArgumentException('An identity provider pins at most 16 signers of its metadata (spec/saml.md section 7).');
@@ -70,6 +75,9 @@ final readonly class UpstreamIdentityProvider implements PeerInterface
         }
         if ($subjectAttribute === $emailAttribute) {
             throw new InvalidArgumentException('The attribute of the subject is the attribute of the e-mail, and an address is given again to another person (spec/saml.md S-45).');
+        }
+        if ($addressParameter !== null) {
+            AddressHint::assertParameter($addressParameter);
         }
     }
 
@@ -118,6 +126,28 @@ final readonly class UpstreamIdentityProvider implements PeerInterface
         }
 
         return new UpstreamProvider($this->entityId, $this->domains, $claims);
+    }
+
+    /**
+     * S-68: the hint of the address the discovery of the login page was given, for the request of a sign-on at this
+     * provider; none when it declares no parameter, when no address was given, when the core does not read it, its
+     * domain written as its A-label (S-60), and when this provider does not answer for its domain, so that an address
+     * goes to the authority of its domain and to no other provider. A hint that cannot be built is no refusal: the
+     * request goes without it.
+     */
+    public function addressHint(?string $address): ?AddressHint
+    {
+        if ($this->addressParameter === null || $address === null) {
+            return null;
+        }
+        try {
+            $domain = EmailDomain::ofAddress($address);
+            $read = EmailAddress::ofAnySpelling($address);
+        } catch (InvalidArgumentException) {
+            return null;
+        }
+
+        return $this->provider()->answersFor($domain) ? new AddressHint($this->addressParameter, $read) : null;
     }
 
     /**

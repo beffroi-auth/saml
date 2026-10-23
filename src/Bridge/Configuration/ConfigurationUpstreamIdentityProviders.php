@@ -41,7 +41,7 @@ final readonly class ConfigurationUpstreamIdentityProviders implements UpstreamI
      * @param array<array-key, mixed> $definitions by entity ID: metadata, metadata_signers, domains, email_attribute,
      *                                             profile (a claim by attribute name), subject_attribute, groups
      *                                             (attribute, and map, a group name by value),
-     *                                             require_encrypted_assertions
+     *                                             require_encrypted_assertions, address_parameter
      *
      * @throws InvalidArgumentException when a declaration does not hold together, or two declare one domain
      */
@@ -117,6 +117,7 @@ final readonly class ConfigurationUpstreamIdentityProviders implements UpstreamI
             $profile[] = $filled;
         }
         $subject = $definition['subject_attribute'] ?? null;
+        $addressParameter = $definition['address_parameter'] ?? null;
 
         return new UpstreamIdentityProvider(
             ModelEntityId::ofIdentityProvider($entityId),
@@ -128,6 +129,7 @@ final readonly class ConfigurationUpstreamIdentityProviders implements UpstreamI
             $subject === null ? null : DeclarationMembers::string($subject, 'subject_attribute'),
             self::groups($definition['groups'] ?? null),
             DeclarationMembers::boolean($definition, 'require_encrypted_assertions', false),
+            $addressParameter === null ? null : DeclarationMembers::string($addressParameter, 'address_parameter'),
         );
     }
 

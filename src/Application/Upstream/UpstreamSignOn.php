@@ -23,8 +23,9 @@ use function random_bytes;
  * A sign-on of the service provider of a tenant at one of its upstream identity providers started (spec/saml.md section
  * 6.11): the provider one the tenant declares (S-48), the reference the request is remembered under drawn from
  * random_bytes() (S-50), and the AuthnRequest sent, forcing a login when the bundle says the client asked for one
- * (S-49). Which interaction it serves, and where it is remembered, are the bundle's: this package knows no
- * authorization request (section 2).
+ * (S-49), carrying the address the person gave the login page to a provider that reads one (S-68). Which interaction
+ * it serves, where it is remembered and which address was given are the bundle's: this package knows no authorization
+ * request (section 2).
  */
 final readonly class UpstreamSignOn
 {
@@ -44,15 +45,18 @@ final readonly class UpstreamSignOn
     /**
      * @param string $identityProvider the entity ID of the provider, as the route was given it
      * @param bool $forceAuthn whether the request forces a login (S-49)
+     * @param string|null $address the address the discovery of the login page was given for the login this sign-on
+     *                             serves, as it was given; null when it was given none (S-68)
      *
      * @throws UpstreamSignOnRefusedException when the tenant declares no such provider, or when the request cannot be
      *                                        sent to it
      * @throws KeyNotFoundException when the tenant holds no active SAML key
      * @throws KmsUnavailableException when the KMS does not answer to open it
      */
-    public function start(Tenant $tenant, string $identityProvider, bool $forceAuthn): SentAuthnRequest
+    public function start(Tenant $tenant, string $identityProvider, bool $forceAuthn, ?string $address = null): SentAuthnRequest
     {
-        if ($this->providers->find($tenant, $identityProvider) === null) {
+        $provider = $this->providers->find($tenant, $identityProvider);
+        if ($provider === null) {
             throw new UpstreamSignOnRefusedException('The identity provider is none this tenant declares (spec/saml.md S-48).');
         }
 
@@ -62,6 +66,7 @@ final readonly class UpstreamSignOn
             $forceAuthn,
             Base64Url::encode(random_bytes(self::REFERENCE_BYTES)),
             $this->clock->now(),
+            $provider->addressHint($address),
         ));
     }
 

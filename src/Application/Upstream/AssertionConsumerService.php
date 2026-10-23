@@ -10,7 +10,6 @@ use Beffroi\Core\Application\Identity\JustInTimeProvisioning;
 use Beffroi\Core\Application\Identity\UpstreamProvisioningRefusedException;
 use Beffroi\Core\Domain\Group\GroupMapping;
 use Beffroi\Core\Domain\Identity\EmailAddress;
-use Beffroi\Core\Domain\Identity\EmailDomain;
 use Beffroi\Core\Domain\Identity\UpstreamProvider;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Session\RequestContext;
@@ -29,8 +28,6 @@ use Beffroi\Saml\Port\ResponseReceiverInterface;
 use Beffroi\Saml\Port\UpstreamIdentityProvidersInterface;
 use function count;
 use function in_array;
-use function strrpos;
-use function substr;
 
 /**
  * The assertion consumer service of the service provider of a tenant (spec/saml.md S-53 to S-57, section 6.14 steps 2
@@ -171,20 +168,10 @@ final readonly class AssertionConsumerService
     private static function isTheMailboxOf(string $subject, EmailAddress $email): bool
     {
         try {
-            return self::asAddress($subject)->isTheSameMailboxAs($email);
+            return EmailAddress::ofAnySpelling($subject)->isTheSameMailboxAs($email);
         } catch (InvalidArgumentException) {
             return false;
         }
-    }
-
-    /**
-     * An address with its domain written as its A-label (S-60), which the core's EmailAddress reads.
-     *
-     * @throws InvalidArgumentException when it holds no "@", or its domain or its local part is refused
-     */
-    private static function asAddress(string $address): EmailAddress
-    {
-        return new EmailAddress(substr($address, 0, (int) strrpos($address, '@')) . '@' . EmailDomain::ofAddress($address)->value);
     }
 
     /**
@@ -200,7 +187,7 @@ final readonly class AssertionConsumerService
             throw new AssertionRefusedException('The attribute of the e-mail holds not one value (spec/saml.md S-56).');
         }
         try {
-            return self::asAddress($address);
+            return EmailAddress::ofAnySpelling($address);
         } catch (InvalidArgumentException) {
             // the refusal of the core names the address, which no exception of a refusal carries (S-53)
             throw new AssertionRefusedException('The attribute of the e-mail is no address whose domain the rule reads (spec/saml.md S-56, S-60).');

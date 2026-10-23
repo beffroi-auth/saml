@@ -1,0 +1,90 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Beffroi\Saml\Domain\Upstream;
+
+use Beffroi\Core\Domain\Identity\EmailAddress;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use function in_array;
+use function preg_match;
+use function rawurlencode;
+use function sprintf;
+use function str_contains;
+use function strpos;
+use function strtolower;
+use function substr;
+
+/**
+ * The address a person gave the login page, carried to the upstream identity provider that reads one in a parameter of
+ * its single sign-on service (spec/saml.md S-68): the name its declaration gives that parameter, and the address, its
+ * domain written as its A-label (S-60). SAML has no such hint (Core §3.4.1), so it is a parameter of the provider and
+ * not of the protocol, and it is never read back: the person is who the signed assertion names.
+ */
+final readonly class AddressHint
+{
+    /**
+     * The longest name of the parameter (section 7).
+     */
+    public const int MAX_PARAMETER_LENGTH = 64;
+
+    /**
+     * RFC 3986 §2.3: the unreserved characters, which a query carries as they are written.
+     */
+    private const string UNRESERVED = '/^[A-Za-z0-9._~-]{1,64}\z/';
+
+    /**
+     * bindings.md B-1: the six parameters of the binding, in lower case, which the name of the parameter is none of
+     * whatever its case.
+     */
+    private const array BINDING_PARAMETERS = ['samlrequest', 'samlresponse', 'samlencoding', 'relaystate', 'sigalg', 'signature'];
+
+    /**
+     * @throws InvalidArgumentException when the name is not one to 64 unreserved characters, or is one of the
+     *                                  parameters of the binding
+     */
+    public function __construct(
+        public string $parameter,
+        public EmailAddress $address,
+    ) {
+        self::assertParameter($parameter);
+    }
+
+    /**
+     * S-68: the name of the parameter a declaration gives, one to 64 of the unreserved characters of RFC 3986 §2.3, so
+     * that it goes into a query as it is written, and none of the six parameters of the binding without regard to
+     * case, which a provider that reads its query so would take for one of them.
+     *
+     * @throws InvalidArgumentException
+     */
+    public static function assertParameter(string $parameter): void
+    {
+        if (preg_match(self::UNRESERVED, $parameter) !== 1) {
+            throw new InvalidArgumentException(sprintf(
+                'The parameter of the address is one to %d unreserved characters of RFC 3986 (spec/saml.md S-68).',
+                self::MAX_PARAMETER_LENGTH,
+            ));
+        }
+        if (in_array(strtolower($parameter), self::BINDING_PARAMETERS, true)) {
+            throw new InvalidArgumentException(sprintf(
+                'The parameter of the address "%s" is a parameter of the binding (spec/saml.md S-68).',
+                $parameter,
+            ));
+        }
+    }
+
+    /**
+     * S-68: the URL with the hint in its query, after a "&" when it holds one and after a "?" otherwise, before its
+     * fragment; the name as it is written, unreserved characters only, and the address percent-encoded outside them,
+     * as the binding encodes its values (RFC 3986 §2.1). Appended to the URL of HTTP-Redirect, it comes after the
+     * Signature, outside the octets the signature covers (Bindings §3.4.4.1).
+     */
+    public function appendedTo(string $url): string
+    {
+        $fragment = strpos($url, '#');
+        $head = $fragment === false ? $url : substr($url, 0, $fragment);
+        $tail = $fragment === false ? '' : substr($url, $fragment);
+
+        return $head . (str_contains($head, '?') ? '&' : '?') . $this->parameter . '=' . rawurlencode($this->address->value) . $tail;
+    }
+}
