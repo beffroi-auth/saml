@@ -10,6 +10,7 @@ use Beffroi\Core\Exception\KmsUnavailableException;
 use Beffroi\Saml\Domain\Upstream\UpstreamIdentityProvider;
 use Beffroi\Saml\Domain\Upstream\VerifiedAssertion;
 use Beffroi\Saml\Exception\AssertionRefusedException;
+use Beffroi\Saml\Exception\UpstreamAuthenticationFailedException;
 
 /**
  * The response an upstream identity provider posted to the assertion consumer service of a tenant (spec/saml.md S-53,
@@ -26,6 +27,7 @@ interface ResponseReceiverInterface
      *
      * @throws AssertionRefusedException when the provider has no accepted document, or the reading back, the binding,
      *                                   the model, Dsig or Enc refuses, the message naming the rule and never a value
+     * @throws UpstreamAuthenticationFailedException when the status of the response, held to the request, is not Success
      * @throws KeyNotFoundException when a key of the provider retired between the reading of the store and its opening
      * @throws KmsUnavailableException when the KMS does not answer to open a key of the provider
      */

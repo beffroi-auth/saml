@@ -24,6 +24,7 @@ use Beffroi\Saml\Domain\Upstream\UpstreamAssertion;
 use Beffroi\Saml\Domain\Upstream\UpstreamIdentityProvider;
 use Beffroi\Saml\Domain\Upstream\VerifiedAssertion;
 use Beffroi\Saml\Exception\AssertionRefusedException;
+use Beffroi\Saml\Exception\UpstreamAuthenticationFailedException;
 use Beffroi\Saml\Port\ResponseReceiverInterface;
 use Beffroi\Saml\Port\UpstreamIdentityProvidersInterface;
 use function count;
@@ -56,6 +57,7 @@ final readonly class AssertionConsumerService
      * @param string $requestId the ID of that request
      *
      * @throws AssertionRefusedException when the response is not taken, naming the rule and never a value (M-16)
+     * @throws UpstreamAuthenticationFailedException when the provider authenticated nobody (S-58)
      * @throws KeyNotFoundException when a key of the provider retired between the reading of the store and its opening
      * @throws KmsUnavailableException when the KMS does not answer to open a key of the provider
      */

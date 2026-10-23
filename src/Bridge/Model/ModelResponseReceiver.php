@@ -9,12 +9,15 @@ use Beffroi\Saml\Domain\Upstream\UpstreamIdentityProvider;
 use Beffroi\Saml\Domain\Upstream\VerifiedAssertion;
 use Beffroi\Saml\Exception\AssertionRefusedException;
 use Beffroi\Saml\Exception\MetadataRefusedException;
+use Beffroi\Saml\Exception\UpstreamAuthenticationFailedException;
 use Beffroi\Saml\Port\AcceptedMetadataRepositoryInterface;
 use Beffroi\Saml\Port\ReplayStoreInterface;
 use Beffroi\Saml\Port\ResponseReceiverInterface;
 use Beffroi\Saml\Port\ServiceProviderEndpointsInterface;
 use Beffroi\Saml2\Bindings\PostReceiver;
 use Beffroi\Saml2\Model\Assertion\NameIdFormat;
+use Beffroi\Saml2\Model\Exception\UnsuccessfulResponse;
+use Beffroi\Saml2\Model\Protocol\SecondLevelStatusCode;
 use Beffroi\Saml2\Model\SamlLoader;
 use Beffroi\Saml2\Model\Validation\ExpectedResponse;
 use Beffroi\Saml2\Model\Validation\ResponseValidator;
@@ -75,6 +78,9 @@ final readonly class ModelResponseReceiver implements ResponseReceiverInterface
                     $identityProvider,
                     ExpectedResponse::toRequest($requestId, $endpoints->assertionConsumerService, $endpoints->entityId),
                 );
+        } catch (UnsuccessfulResponse $failure) {
+            // S-58: held to the request it answers before the model says it failed; nothing of it travels on
+            throw new UpstreamAuthenticationFailedException($failure->status->secondLevel === SecondLevelStatusCode::NoPassive);
         } catch (RefusedXml $exception) {
             throw new AssertionRefusedException($exception->getMessage(), 0, $exception);
         }
