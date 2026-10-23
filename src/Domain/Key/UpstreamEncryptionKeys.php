@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Beffroi\Saml\Domain\Key;
 
 use function array_reverse;
+use Beffroi\Core\Domain\Encoding\Base64Url;
 use Beffroi\Core\Domain\Key\TenantKey;
 use Beffroi\Core\Exception\RuntimeException;
+use function ltrim;
 use function sprintf;
 
 /**
@@ -26,7 +28,6 @@ final readonly class UpstreamEncryptionKeys
      * @param list<TenantKey> $keys the newest first
      */
     private function __construct(
-        public ?SamlEncryptionAlgorithmInterface $algorithm,
         public array $keys,
     ) {
     }
@@ -34,15 +35,14 @@ final readonly class UpstreamEncryptionKeys
     /**
      * @param list<TenantKey> $inService the keys of the tenant in service, in creation order
      *
-     * @throws RuntimeException when a key of that provider shares its modulus with another key in service
+     * @throws RuntimeException when a key of that provider shares its modulus with another key in service, or a key in
+     *                          service carries a modulus that is not base64url
      */
     public static function of(array $inService, string $identityProvider): self
     {
-        $algorithm = null;
         $keys = [];
         foreach ($inService as $key) {
             if ($key->algorithm instanceof SamlEncryptionAlgorithmInterface && $key->algorithm->identityProvider() === $identityProvider) {
-                $algorithm = $key->algorithm;
                 $keys[] = $key;
             }
         }
@@ -50,7 +50,7 @@ final readonly class UpstreamEncryptionKeys
             self::assertItsOwn($key, $inService);
         }
 
-        return new self($algorithm, array_reverse($keys));
+        return new self(array_reverse($keys));
     }
 
     /**
@@ -60,8 +60,9 @@ final readonly class UpstreamEncryptionKeys
      */
     private static function assertItsOwn(TenantKey $key, array $inService): void
     {
+        $modulus = self::modulusOf($key);
         foreach ($inService as $other) {
-            if ($other === $key || self::modulusOf($other) !== self::modulusOf($key)) {
+            if ($other === $key || self::modulusOf($other) !== $modulus) {
                 continue;
             }
 
@@ -74,10 +75,24 @@ final readonly class UpstreamEncryptionKeys
     }
 
     /**
-     * The "n" of an RSA key (RFC 7518 §6.3.1.1), which no key of another type carries.
+     * The modulus of an RSA key as the integer its "n" encodes (RFC 7518 §6.3.1.1), its octets without the zeros that
+     * may lead them, so that two spellings of one integer are one modulus, and null for a key of another type, which
+     * carries none. An "n" that is not base64url, a line or a space in it among others, which the reader of a private
+     * key would skip, is a fault of the store and refused rather than compared as text.
+     *
+     * @throws RuntimeException
      */
     private static function modulusOf(TenantKey $key): ?string
     {
-        return $key->publicJwk['n'] ?? null;
+        $n = $key->publicJwk['n'] ?? null;
+        if ($n === null) {
+            return null;
+        }
+        $octets = Base64Url::decode($n) ?? throw new RuntimeException(sprintf(
+            'A key of %s carries a modulus that is not base64url (RFC 7518 §6.3.1.1, spec/saml.md S-64).',
+            $key->algorithm->name(),
+        ));
+
+        return ltrim($octets, "\0");
     }
 }
