@@ -1,19 +1,19 @@
 # beffroi/saml
 
-Part of [beffroi/framework](https://github.com/beffroi-php/beffroi), developed in `src/saml` of that monorepo; this repository is
+Part of [beffroi/framework](https://github.com/beffroi-auth/beffroi), developed in `src/saml` of that monorepo; this repository is
 its read-only split. Issues and pull requests go to the monorepo.
 
 The SAML 2.0 module of the identity provider: the profile written on
-[`beffroi/saml2-model`](https://github.com/beffroi-php/saml2-model) and
-[`beffroi/saml2-bindings`](https://github.com/beffroi-php/saml2-bindings) for the tenants, the users and the sessions
-of [`beffroi/core`](https://github.com/beffroi-php/core): the identity provider and the service providers of a tenant,
+[`beffroi/saml2-model`](https://github.com/beffroi-auth/saml2-model) and
+[`beffroi/saml2-bindings`](https://github.com/beffroi-auth/saml2-bindings) for the tenants, the users and the sessions
+of [`beffroi/core`](https://github.com/beffroi-auth/core): the identity provider and the service providers of a tenant,
 their metadata, the attributes mapped from the claims, the `NameID` derived from the `sub`, Single Logout on the
 session of the core. Pure PHP, in the four layers of the identity provider's packages; the HTTP request is the
 bundle's.
 
 [`spec/saml.md`](spec/saml.md) is the law of the package: the code conforms to it, or the document changes first.
 This file is its short version. The package is being built by sub-spike 9c, the identity provider role
-([beffroi-php/beffroi#645](https://github.com/beffroi-php/beffroi/issues/645)): it holds the identity provider of a
+([beffroi-auth/beffroi#645](https://github.com/beffroi-auth/beffroi/issues/645)): it holds the identity provider of a
 tenant so far, its signing key, kept by the KMS as every key of the tenant, the self-signed certificate around that
 key and the metadata that publishes it, the next key's certificate beside the current one before it signs anything;
 and the service providers of the tenant, declared in its configuration, their metadata read from a file or an `https`
@@ -81,9 +81,9 @@ Every task runs inside the `ghcr.io/spomky-labs/phpqa` image when Docker is avai
 
 ## Security
 
-See the [security policy](https://github.com/beffroi-php/beffroi/blob/0.0.x/SECURITY.md) of the monorepo: private reporting, an advisory and a CVE for
+See the [security policy](https://github.com/beffroi-auth/beffroi/blob/0.0.x/SECURITY.md) of the monorepo: private reporting, an advisory and a CVE for
 every fix.
 
 ## License
 
-MIT, see the [LICENSE](https://github.com/beffroi-php/beffroi/blob/0.0.x/LICENSE) of the monorepo.
+MIT, see the [LICENSE](https://github.com/beffroi-auth/beffroi/blob/0.0.x/LICENSE) of the monorepo.
