@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Saml\Domain\SingleLogout;
+namespace Beffroi\Saml\Domain\Replay;
 
 use Beffroi\Core\Domain\PersonalData\ClassifiedFieldsInterface;
 use Beffroi\Core\Domain\PersonalData\FieldClassificationInterface;
@@ -13,11 +13,12 @@ use DateTimeImmutable;
 use function hash;
 
 /**
- * A logout message the model accepted, remembered until the window in which it would accept it again has closed
- * (spec/saml.md S-23, model.md M-11): keyed by the SHA-256 of its tenant, its issuer and its ID, each followed by a
- * NUL, which none of them holds, so that a key is 64 hexadecimal digits whatever the length of the entity ID.
+ * An assertion or a logout message the model accepted (spec/saml.md S-23, S-53), remembered until the window in which
+ * it would accept it again has closed (model.md M-11): keyed by the SHA-256 of its tenant, its issuer and its ID, each
+ * followed by a NUL, which none of them holds, so that a key is 64 hexadecimal digits whatever the length of the
+ * entity ID.
  */
-final readonly class RememberedLogoutMessage implements ClassifiedFieldsInterface
+final readonly class RememberedMessage implements ClassifiedFieldsInterface
 {
     public function __construct(
         public string $key,

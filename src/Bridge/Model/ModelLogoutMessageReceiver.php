@@ -13,7 +13,7 @@ use Beffroi\Saml\Exception\MetadataRefusedException;
 use Beffroi\Saml\Port\IdentityProviderEndpointsInterface;
 use Beffroi\Saml\Port\LogoutChainRepositoryInterface;
 use Beffroi\Saml\Port\LogoutMessageReceiverInterface;
-use Beffroi\Saml\Port\LogoutReplayStoreInterface;
+use Beffroi\Saml\Port\ReplayStoreInterface;
 use Beffroi\Saml2\Bindings\PostReceiver;
 use Beffroi\Saml2\Bindings\ReceivedLogoutRequest;
 use Beffroi\Saml2\Bindings\ReceivedLogoutResponse;
@@ -61,7 +61,7 @@ final readonly class ModelLogoutMessageReceiver implements LogoutMessageReceiver
     public function __construct(
         private DeclaredServiceProviderReader $serviceProviders,
         private IdentityProviderEndpointsInterface $endpoints,
-        private LogoutReplayStoreInterface $replay,
+        private ReplayStoreInterface $replay,
         private ClockInterface $clock,
         private LogoutChainRepositoryInterface $chains,
     ) {
