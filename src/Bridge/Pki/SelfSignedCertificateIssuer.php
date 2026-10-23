@@ -9,8 +9,7 @@ use Beffroi\Core\Domain\Key\UnsealedKey;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Core\Exception\RuntimeException;
 use Beffroi\Core\Domain\Key\KeyUse;
-use Beffroi\Saml\Domain\Key\SamlEncryptionAlgorithmInterface;
-use Beffroi\Saml\Domain\Key\SamlSigningAlgorithmInterface;
+use Beffroi\Saml\Domain\Key\CertifiedKeyAlgorithmInterface;
 use Beffroi\Saml\Domain\Metadata\Certificate;
 use Beffroi\Saml\Port\CertificateIssuerInterface;
 use function base64_encode;
@@ -65,7 +64,7 @@ final readonly class SelfSignedCertificateIssuer implements CertificateIssuerInt
     public function selfSigned(UnsealedKey $key): Certificate
     {
         $tenantKey = $key->key;
-        if (! $tenantKey->algorithm instanceof SamlSigningAlgorithmInterface && ! $tenantKey->algorithm instanceof SamlEncryptionAlgorithmInterface) {
+        if (! $tenantKey->algorithm instanceof CertifiedKeyAlgorithmInterface) {
             throw new InvalidArgumentException(sprintf(
                 'The key "%s" is of %s, not a SAML key: its certificate is not one the metadata publishes (spec/saml.md section 6.1 step 2).',
                 $tenantKey->kid,

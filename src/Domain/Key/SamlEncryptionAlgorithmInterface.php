@@ -20,7 +20,7 @@ use Beffroi\Core\Domain\Key\KeptEncryptionAlgorithmInterface;
  * provider, as identityProvider() answers it. The family takes the figures of the SAML signing key (S-12), whose
  * constants SamlSigningAlgorithmInterface holds.
  */
-interface SamlEncryptionAlgorithmInterface extends KeptEncryptionAlgorithmInterface
+interface SamlEncryptionAlgorithmInterface extends KeptEncryptionAlgorithmInterface, CertifiedKeyAlgorithmInterface
 {
     /**
      * What the name of every algorithm of the family begins with, the entity ID of the provider after it (S-64).

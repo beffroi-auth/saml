@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Beffroi\Saml\Application\Metadata;
 
-use function array_map;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Core\Exception\KmsUnavailableException;
@@ -17,8 +16,9 @@ use Beffroi\Saml\Port\CertificateIssuerInterface;
 
 /**
  * The certificate of each key an upstream identity provider encrypts for (spec/saml.md S-65, section 6.12 step 2):
- * staged, active and retiring, the newest first, so that the next one is the one the provider takes from its staging,
- * and those of that provider alone, so that it never reads the certificate of another (S-64).
+ * staged and active, the newest first, so that the next one is the one the provider takes from its staging, and those
+ * of that provider alone (S-64). A retiring key is no longer announced, so that no provider that reads the metadata in
+ * its last hour takes it; it still opens what was encrypted for it until it retires (S-66).
  *
  * Each built once per process and kept while its key is in service, the private half opened for it dropped at once
  * (S-1, S-3), as SigningCertificates keeps the certificates of the signing keys; those of the other providers of the
@@ -49,9 +49,14 @@ final readonly class EncryptionCertificates
         $inService = $this->keys->findInService($tenant);
         $this->built->keepInService($tenant, $inService);
 
-        return array_map(
-            $this->built->of(...),
-            UpstreamEncryptionKeys::of($inService, $identityProvider)->keys,
-        );
+        $certificates = [];
+        foreach (UpstreamEncryptionKeys::of($inService, $identityProvider)->keys as $key) {
+            // a retiring key still opens what was encrypted for it, and is no longer announced (S-65)
+            if ($key->isStaged() || $key->isActive()) {
+                $certificates[] = $this->built->of($key);
+            }
+        }
+
+        return $certificates;
     }
 }

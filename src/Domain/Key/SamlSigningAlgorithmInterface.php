@@ -24,7 +24,7 @@ use Beffroi\Core\Domain\Key\KeptSigningAlgorithmInterface;
  * before it signs and works a year. The two constants are the default figures of the family, which a deployment may
  * set otherwise.
  */
-interface SamlSigningAlgorithmInterface extends KeptSigningAlgorithmInterface
+interface SamlSigningAlgorithmInterface extends KeptSigningAlgorithmInterface, CertifiedKeyAlgorithmInterface
 {
     /**
      * How long a staged SAML key is published before it signs, in seconds: seven days, seven times the cacheDuration
