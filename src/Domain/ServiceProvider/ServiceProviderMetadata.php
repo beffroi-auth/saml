@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Saml\Domain\ServiceProvider;
 
 use Beffroi\Saml\Domain\Metadata\Certificate;
+use Beffroi\Saml\Domain\Metadata\PeerMetadataInterface;
 use DateTimeImmutable;
 
 /**
@@ -21,7 +22,7 @@ use DateTimeImmutable;
  * provider that says nothing and holds no key, silently, and the one that decides S-6 is said by the reading that knows
  * it, never by whoever replaces the document accepted, so leaving one out fails where it is written.
  */
-final readonly class ServiceProviderMetadata
+final readonly class ServiceProviderMetadata implements PeerMetadataInterface
 {
     /**
      * @param list<Certificate> $encryptionCertificates

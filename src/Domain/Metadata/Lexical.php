@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Saml\Domain\ServiceProvider;
+namespace Beffroi\Saml\Domain\Metadata;
 
 use function mb_strlen;
 use function preg_match;
 
 /**
- * The lexical rules a declaration holds its names to (spec/saml.md section 6.2 step 1): a name is not empty, holds no
+ * The lexical rules a declaration holds its names to (spec/saml.md section 6.2 step 1, section 6.10 step 1): a name is not empty, holds no
  * whitespace, no control character and no separator anywhere (M-6), is valid UTF-8, which the pattern refuses
  * otherwise, and is at most as long as a URI the model compares, counted in characters as the model counts them.
  *

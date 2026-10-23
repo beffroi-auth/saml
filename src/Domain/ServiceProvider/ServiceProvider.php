@@ -7,6 +7,9 @@ namespace Beffroi\Saml\Domain\ServiceProvider;
 use function array_key_exists;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Saml\Domain\Metadata\Certificate;
+use Beffroi\Saml\Domain\Metadata\Lexical;
+use Beffroi\Saml\Domain\Metadata\MetadataLocation;
+use Beffroi\Saml\Domain\Metadata\PeerInterface;
 use function count;
 
 /**
@@ -15,7 +18,7 @@ use function count;
  * assertions encrypted (S-7), and whether it signs its authentication requests, without which none of its requests
  * is accepted unsigned (S-9). Never registered by a request nor through a page: a declaration goes away when its block does.
  */
-final readonly class ServiceProvider
+final readonly class ServiceProvider implements PeerInterface
 {
     /**
      * The `maxVerificationKeys` of Dsig, which `readSigned()` hands the signers to (section 7).
