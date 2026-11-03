@@ -33,7 +33,7 @@ use function in_array;
  * The assertion consumer service of the service provider of a tenant (spec/saml.md S-53 to S-57, section 6.14 steps 2
  * to 7): the response an upstream identity provider posted, taken as the answer to the request the browser remembers,
  * and what it says of the person, then the person itself, the core's first sign-in. The request remembered, the
- * session, what the client asked and where the browser goes are the bundle's, which holds the HTTP session and the
+ * session, what the client asked and where the browser goes are the application's, which holds the HTTP session and the
  * interaction (S-52, S-58, S-59).
  */
 final readonly class AssertionConsumerService

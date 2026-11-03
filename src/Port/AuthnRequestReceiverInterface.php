@@ -11,7 +11,7 @@ use Beffroi\Saml\Exception\SignOnRefusedException;
 /**
  * An authentication request received at the single sign-on service of a tenant, decoded by its binding and validated
  * by the model under the signature its service provider needs (spec/saml.md section 6.3), at the URL the metadata of
- * the tenant publish (section 6.8). What the bundle hands it is what bindings.md section 6.8 names, and nothing else.
+ * the tenant publish (section 6.8). What the application hands it is what bindings.md section 6.8 names, and nothing else.
  */
 interface AuthnRequestReceiverInterface
 {

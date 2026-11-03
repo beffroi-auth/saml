@@ -15,7 +15,7 @@ use Beffroi\Saml\Domain\Metadata\AcceptedMetadata;
 final class AcceptedServiceProviderMetadata extends AcceptedMetadata
 {
     /**
-     * The family the document is sealed in, the name of its table without the prefix of the bundle (decision 0018).
+     * The family the document is sealed in, the name of its table without the prefix of the application (decision 0018).
      */
     public const string FAMILY = 'saml_service_provider';
 

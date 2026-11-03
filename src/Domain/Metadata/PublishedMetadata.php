@@ -55,7 +55,7 @@ final readonly class PublishedMetadata
     }
 
     /**
-     * The rule of S-12, which each handler checks when it is built and the configuration of the bundle when it is read:
+     * The rule of S-12, which each handler checks when it is built and the configuration of the application when it is read:
      * a service provider that honours the cacheDuration fetches the metadata again, and the next certificate with it,
      * before the staged key signs, which a cacheDuration as long as the staging window would not leave it time for.
      *

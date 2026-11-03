@@ -22,7 +22,7 @@ interface ResponseReceiverInterface
 {
     /**
      * @param UpstreamIdentityProvider $provider the declaration of the provider the request went to
-     * @param array<array-key, mixed> $fields the fields of the form, as the bundle received them (bindings.md 6.8)
+     * @param array<array-key, mixed> $fields the fields of the form, as the application received them (bindings.md 6.8)
      * @param string $requestId the ID of the request the response answers (M-10)
      *
      * @throws AssertionRefusedException when the provider has no accepted document, or the reading back, the binding,

@@ -34,12 +34,12 @@ use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
 
 /**
- * Single sign-on, from the request the bundle received to the form the browser posts (spec/saml.md section 6.4): the
+ * Single sign-on, from the request the application received to the form the browser posts (spec/saml.md section 6.4): the
  * request accepted and its service provider declared (steps 1 and 2), then, at each step the browser reaches, what the
  * request allows (step 4), the subject and the attributes (steps 5 and 6) and the answer written (step 7), the key its
  * assertion is encrypted for read from the accepted metadata of a service provider that asks for it (S-19). Whether a
- * login is needed is answered here and nowhere else; where the request waits for it is the bundle's (step 3). A
- * success announces the service provider's part in the session, which the bundle records asynchronously (S-26).
+ * login is needed is answered here and nowhere else; where the request waits for it is the application's (step 3). A
+ * success announces the service provider's part in the session, which the application records asynchronously (S-26).
  */
 final readonly class SingleSignOn
 {

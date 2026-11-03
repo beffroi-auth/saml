@@ -9,7 +9,7 @@ The SAML 2.0 module of the identity provider: the profile written on
 of [`beffroi/core`](https://github.com/beffroi-auth/core): the identity provider and the service providers of a tenant,
 their metadata, the attributes mapped from the claims, the `NameID` derived from the `sub`, Single Logout on the
 session of the core. Pure PHP, in the four layers of the identity provider's packages; the HTTP request is the
-bundle's.
+application's.
 
 [`spec/saml.md`](spec/saml.md) is the law of the package: the code conforms to it, or the document changes first.
 This file is its short version. The package is being built by sub-spike 9c, the identity provider role

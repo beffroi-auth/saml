@@ -13,7 +13,7 @@ use Beffroi\Saml2\Model\Value\Uri;
  * ID under and its MetadataReader reads one under (spec/saml.md S-38, S-42, M-6): absolute, at most 1024 characters,
  * no whitespace, no control character and no format or invisible character. One rule, read where the model reads it,
  * so that what the configuration accepts is what the metadata can carry: the entity ID of the service provider of the
- * tenant, which the bundle checks when its container is compiled and its locator at the first use of one an
+ * tenant, which the application checks when its container is compiled and its locator at the first use of one an
  * environment variable kept from the compilation, and the entity ID an upstream identity provider is declared under,
  * which ConfigurationUpstreamIdentityProviders checks when it builds the declaration, at the compilation too.
  */

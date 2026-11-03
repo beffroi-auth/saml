@@ -33,7 +33,7 @@ use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * The single logout service of the tenant, from the message the bundle received to what the browser is given (spec/
+ * The single logout service of the tenant, from the message the application received to what the browser is given (spec/
  * saml.md section 6.5): the key that signs the answer opened first, then a request of a service provider accepted,
  * once (S-22, S-23), the sessions it names ended when their user is the principal it names (S-24), as every session of
  * the core ends (S-25), then the other service providers of those sessions told before the answer is written to the

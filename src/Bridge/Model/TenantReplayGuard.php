@@ -10,7 +10,7 @@ use Beffroi\Saml2\Model\Port\ReplayGuardInterface;
 use DateTimeImmutable;
 
 /**
- * The replay port of saml2-model (model.md section 5.2, M-11) over the store of the bundle, for the assertions and the
+ * The replay port of saml2-model (model.md section 5.2, M-11) over the store of the application, for the assertions and the
  * logout messages of one tenant (spec/saml.md S-23, S-53): the validator of a message received for that tenant is
  * handed it, so that what the model remembers is remembered under the tenant every row of the store carries.
  */

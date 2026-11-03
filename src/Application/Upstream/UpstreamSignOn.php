@@ -22,9 +22,9 @@ use function random_bytes;
 /**
  * A sign-on of the service provider of a tenant at one of its upstream identity providers started (spec/saml.md section
  * 6.11): the provider one the tenant declares (S-48), the reference the request is remembered under drawn from
- * random_bytes() (S-50), and the AuthnRequest sent, forcing a login when the bundle says the client asked for one
+ * random_bytes() (S-50), and the AuthnRequest sent, forcing a login when the application says the client asked for one
  * (S-49), carrying the address the person gave the login page to a provider that reads one (S-68). Which interaction
- * it serves, where it is remembered and which address was given are the bundle's: this package knows no authorization
+ * it serves, where it is remembered and which address was given are the application's: this package knows no authorization
  * request (section 2).
  */
 final readonly class UpstreamSignOn

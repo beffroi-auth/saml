@@ -24,7 +24,7 @@ final readonly class ServiceProviderEndpoints
     }
 
     /**
-     * The second rule of S-38, which the bundle checks when its container is compiled and the locator of the service
+     * The second rule of S-38, which the application checks when its container is compiled and the locator of the service
      * provider when it is first used, should either value hold an environment variable: one entity ID is
      * one md:EntityDescriptor (Metadata §2.3.2), so the service provider of a tenant is never named as its identity
      * provider is, compared exactly (M-8).

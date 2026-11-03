@@ -8,7 +8,7 @@ use Beffroi\Saml\Domain\SingleLogout\SessionParticipation;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Each service provider's part in a session of the core (spec/saml.md S-26), the bundle's.
+ * Each service provider's part in a session of the core (spec/saml.md S-26), the application's.
  */
 interface SessionParticipationRepositoryInterface
 {

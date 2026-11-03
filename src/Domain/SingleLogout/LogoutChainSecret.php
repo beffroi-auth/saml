@@ -10,7 +10,7 @@ use function random_bytes;
 /**
  * The secret that binds a chain of logout to the browser that began it (spec/saml.md S-32): drawn when the chain
  * begins, kept by the chain as its SHA-256 only, held by that browser alone, which presents it at every step. How the
- * browser holds it is the bundle's; this package sees the secret and its digest, never where it travels.
+ * browser holds it is the application's; this package sees the secret and its digest, never where it travels.
  */
 final readonly class LogoutChainSecret
 {

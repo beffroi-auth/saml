@@ -8,7 +8,7 @@ use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Saml\Domain\SingleLogout\LogoutChain;
 
 /**
- * The chains of logout the identity provider plays (spec/saml.md S-32), the bundle's: one store for every worker of
+ * The chains of logout the identity provider plays (spec/saml.md S-32), the application's: one store for every worker of
  * the deployment, since the next request of the browser may reach another one.
  */
 interface LogoutChainRepositoryInterface

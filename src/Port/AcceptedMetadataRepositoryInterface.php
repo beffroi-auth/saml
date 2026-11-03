@@ -9,7 +9,7 @@ use Beffroi\Saml\Domain\Metadata\AcceptedMetadata;
 
 /**
  * Where the newest accepted metadata document of each peer of one role of a tenant is kept (spec/saml.md S-6, S-8,
- * S-42): the bundle's, which seals the document, one per role, each the table of its role and the rows of that role
+ * S-42): the application's, which seals the document, one per role, each the table of its role and the rows of that role
  * only.
  */
 interface AcceptedMetadataRepositoryInterface

@@ -25,7 +25,7 @@ use function sprintf;
  * keyed by entity ID, a URI as the model reads one (ModelEntityId), validated when they are built (section 6.10 step
  * 1): a declaration that does not hold together
  * fails there, naming the identity provider, a claim of the profile the deployment does not hold among them (S-45),
- * and a domain two of them declare fails naming it and both (S-44). The bundle builds this object when its container
+ * and a domain two of them declare fails naming it and both (S-44). The application builds this object when its container
  * is compiled, every claim named held, then again against the claims of the profile right after, in the same build,
  * so that it fails the build of the deployment rather than its first refresh or its first sign-in; a declaration
  * holding an environment variable is left to its first use. They are those of one tenant, named by its slug.

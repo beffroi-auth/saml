@@ -7,7 +7,7 @@ namespace Beffroi\Saml\Port;
 use Beffroi\Core\Domain\Identity\User;
 
 /**
- * The claims the provider serves, which an attribute mapping names (spec/saml.md S-16): the bundle reads them where
+ * The claims the provider serves, which an attribute mapping names (spec/saml.md S-16): the application reads them where
  * OpenID Connect does, so that a claim is one thing whatever protocol carries it.
  */
 interface ServedClaimsInterface
