@@ -39,24 +39,10 @@ use Beffroi\Xml\Enc\PeerKey;
 use InvalidArgumentException;
 
 /**
- * The answer to a request written with saml2-model's objects and sent through saml2-bindings' PostSender (spec/saml.md
- * section 6.4 step 7): a Response of a new ID to the assertion consumer service the model resolved, its InResponseTo
- * the ID of the request, its Issuer the entity ID of the tenant (S-14); its one assertion of a new ID, a persistent
- * NameID qualified by both entities (S-13), one bearer confirmation ending five minutes after the issue and Conditions
- * from the issue, their NotBefore, which Entra requires, to five minutes after it, one AudienceRestriction naming the
- * service provider, an authentication statement of the session, the unspecified class, and the attributes released
- * (S-16); the assertion signed, then the response over it, under RSA-SHA256, by the active SAML key of the tenant
- * (S-15); the RelayState received handed back as it is. For a response that names the certificate of a service
- * provider, the assertion encrypted by the model's writer between the two signatures (S-21), for the key of that
- * certificate (S-19), under aes256-gcm and rsa-oaep-mgf1p (S-20).
- *
- * The key is the core's, opened by the KMS once per process, through TenantSigning (S-1).
+ * spec/saml.md section 6.4 step 7. The Conditions carry a NotBefore, which Entra requires.
  */
 final readonly class ModelSignOnResponder implements SignOnResponderInterface
 {
-    /**
-     * Authentication Context §3.4.27: the class that says nothing the identity provider has not mapped (section 12).
-     */
     public const string CONTEXT_CLASS = 'urn:oasis:names:tc:SAML:2.0:ac:classes:unspecified';
 
     public function __construct(
@@ -123,9 +109,9 @@ final readonly class ModelSignOnResponder implements SignOnResponderInterface
     }
 
     /**
-     * S-19, S-20: the key of the certificate the accepted metadata name, under the one scheme, or nothing to encrypt.
+     * S-19, S-20
      *
-     * @throws RefusedXml what Enc refuses of the certificate, which the model's reader already checked (D-16)
+     * @throws RefusedXml
      */
     private static function encryption(?Certificate $certificate): ?Encryption
     {

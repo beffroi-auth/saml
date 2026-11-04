@@ -20,10 +20,7 @@ use DateTimeImmutable;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * The service providers of a tenant as a role of the peers whose metadata are read (spec/saml.md section 6.2): those
- * the configuration declares (S-5), a document of one read by the channel or under the signers it pins, its entity ID
- * the declared one, refused when it asks for encryption without a key for it (S-7) and when its requests need a
- * signature without a key to verify it by (S-11), and its first document kept in the row of the service providers.
+ * spec/saml.md section 6.2, S-5, S-7, S-11
  *
  * @implements PeerRoleInterface<ServiceProvider>
  */
@@ -46,7 +43,7 @@ final readonly class ServiceProviderRole implements PeerRoleInterface
     }
 
     /**
-     * Section 6.2 steps 3 to 5.
+     * Section 6.2 steps 3 to 5
      */
     public function read(PeerInterface $peer, string $document): ServiceProviderMetadata
     {

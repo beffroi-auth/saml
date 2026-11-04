@@ -7,11 +7,6 @@ namespace Beffroi\Saml\Domain\Upstream;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Saml\Domain\Metadata\Lexical;
 
-/**
- * An attribute of the assertions of an upstream identity provider that fills a claim of the profile of a person
- * (spec/saml.md S-45): its name, compared exactly, and the claim of OIDC Core §5.1 it fills. Which claims the profile
- * holds is the deployment's, checked where the declarations are built.
- */
 final readonly class ProfileAttribute
 {
     /**

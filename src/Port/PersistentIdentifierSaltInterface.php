@@ -9,14 +9,13 @@ use Beffroi\Core\Exception\KmsUnavailableException;
 use Beffroi\Core\Exception\RuntimeException;
 
 /**
- * The secret of a tenant its persistent identifiers are computed with (spec/saml.md S-13): never published, never
- * written to a log, sealed by the KMS of the tenant. Losing it gives every user a new identifier at every service
- * provider.
+ * Never published nor written to a log, sealed by the KMS of the tenant: losing it gives every user a new identifier
+ * at every service provider.
  */
 interface PersistentIdentifierSaltInterface
 {
     /**
-     * @throws KmsUnavailableException when the KMS of the tenant does not answer to open it
+     * @throws KmsUnavailableException
      * @throws RuntimeException when it can neither be read nor drawn
      *
      * @return non-empty-string

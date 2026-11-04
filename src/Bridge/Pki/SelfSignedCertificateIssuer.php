@@ -38,26 +38,13 @@ use function substr;
 use Throwable;
 
 /**
- * The self-signed certificate around a SAML key of a tenant, built with pki-framework (spec/saml.md section 6.1 step
- * 2, S-3): X.509 version 3, a serial number drawn from the "kid", the slug of the tenant for its subject and its
- * issuer, valid from the creation of the key, to the second, for ten years, the public key of the key's JWK, one
- * keyUsage, signed sha256WithRSAEncryption by the key itself, its parameters NULL as RFC 4055 §5 requires of a
- * producer, whose PKCS #1 v1.5 signature is deterministic: built twice, it is the same bytes.
- *
- * The keyUsage is the use of the key (RFC 5280 §4.2.1.3): digitalSignature for the SAML signing key, keyEncipherment
- * for the key an upstream identity provider encrypts for (S-65), which transports a session key and signs nothing but
- * its own certificate, a notation of the key a peer does not verify as a path.
- *
- * It is verified under its own public key before it is returned, the result of openssl_verify() compared to 1 and
- * never to a boolean: the function answers -1 on an error, which PHP holds for true. The private half is turned into
- * a key of OpenSSL in memory for that one signature (RsaPrivateKey) and goes out of scope with it (S-1).
+ * spec/saml.md section 6.1 step 2, S-3
  */
 final readonly class SelfSignedCertificateIssuer implements CertificateIssuerInterface
 {
     /**
-     * How long the certificate is valid from the creation of its key (section 6.1 step 2): ten years, as hosted
-     * identity providers issue theirs, a date before 2050 being written as UTCTime, where Entra refuses a certificate
-     * valid until 9999-12-31 in GeneralizedTime (section 7).
+     * Ten years, as hosted identity providers issue theirs, a date before 2050 being written as UTCTime: Entra refuses
+     * a certificate valid until 9999-12-31 in GeneralizedTime.
      */
     public const string VALIDITY = 'P10Y';
 
@@ -83,7 +70,7 @@ final readonly class SelfSignedCertificateIssuer implements CertificateIssuerInt
             throw new RuntimeException(sprintf('The certificate of the key "%s" cannot be signed.', $tenantKey->kid), 0, $failure);
         }
 
-        // compared to 1: openssl_verify() answers -1 on an error, which is true as a boolean (S-3)
+        // Compared to 1: openssl_verify() answers -1 on an error, which is true as a boolean.
         if (openssl_verify($signedBytes, $signature, $publicPem, OPENSSL_ALGO_SHA256) !== 1) {
             throw new RuntimeException(sprintf(
                 'The certificate of the key "%s" does not verify under its own public key: its private half is not the one of its public JWK (spec/saml.md section 6.1 step 2).',
@@ -95,7 +82,8 @@ final readonly class SelfSignedCertificateIssuer implements CertificateIssuerInt
     }
 
     /**
-     * The certificate, each of its fields a function of the key and of its tenant (section 6.1 step 2).
+     * Every field is a function of the key and of its tenant. The NULL parameters of the algorithm are what
+     * RFC 4055 §5 requires of a producer.
      */
     private static function sign(TenantKey $key, OpenSSLAsymmetricKey $private): X509Certificate
     {
@@ -105,7 +93,6 @@ final readonly class SelfSignedCertificateIssuer implements CertificateIssuerInt
         $privateKeyInfo = PrivateKeyInfo::fromDER(PEM::fromString($pem)->data());
         $name = Name::fromString('cn=' . $key->tenant->slug);
         $notBefore = new DateTimeImmutable('@' . $key->createdAt->getTimestamp());
-        // pki-framework writes a date before 2050 as UTCTime and a later one as GeneralizedTime (RFC 5280 §4.1.2.5)
         $validity = Validity::create(Time::create($notBefore), Time::create($notBefore->add(new DateInterval(self::VALIDITY))));
 
         return TBSCertificate::create($name, $privateKeyInfo->publicKeyInfo(), $name, $validity)
@@ -116,7 +103,7 @@ final readonly class SelfSignedCertificateIssuer implements CertificateIssuerInt
     }
 
     /**
-     * What the key is for, said in the terms of X.509 (RFC 5280 §4.2.1.3): a key of use "enc" transports keys.
+     * RFC 5280 §4.2.1.3. A key of use "enc" signs nothing but its own certificate, which no peer verifies as a path.
      */
     private static function keyUsage(TenantKey $key): int
     {
@@ -124,8 +111,7 @@ final readonly class SelfSignedCertificateIssuer implements CertificateIssuerInt
     }
 
     /**
-     * One more than the first seven bytes of the SHA-256 of the "kid", read as an unsigned integer: positive and at
-     * most 20 octets (RFC 5280 §4.1.2.2), and the same for the same key.
+     * RFC 5280 §4.1.2.2: positive, at most 20 octets, and the same for the same key.
      */
     private static function serialNumber(TenantKey $key): int
     {

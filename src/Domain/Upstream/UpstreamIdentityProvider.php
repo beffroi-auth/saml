@@ -18,15 +18,8 @@ use function count;
 use function sprintf;
 
 /**
- * An upstream identity provider of a tenant as the deployment declares it (spec/saml.md S-42, section 5.7): an
- * identity provider whose assertions the service provider of the tenant receives. Its entity ID, where its metadata
- * are read from and who signs them; the e-mail domains it answers for (S-44); and what an assertion of it is read for
- * (S-45): the attribute of the e-mail, the attributes that fill the profile, the attribute that names a person when
- * the NameID is not persistent, and the groups; whether its assertions must arrive encrypted (S-67), which the
- * assertion consumer service applies (issue #784); and the parameter of its single sign-on service that takes the
- * address a person gave the login page, when it reads one (S-68). Never registered by a request nor through a page: a
- * declaration goes away when its block does. Its entity ID is held to the rule of the model where the declaration is
- * read (ModelEntityId), the model being no dependency of the domain.
+ * Its entity ID is held to the rule of the model where the declaration is read (ModelEntityId), the domain not
+ * depending on the model.
  */
 final readonly class UpstreamIdentityProvider implements PeerInterface
 {
@@ -35,18 +28,12 @@ final readonly class UpstreamIdentityProvider implements PeerInterface
      */
     public const int MAX_METADATA_SIGNERS = 16;
 
-    /**
-     * The domains of one organisation, which a declaration names one by one (section 7).
-     */
     public const int MAX_DOMAINS = 256;
 
     /**
-     * @param list<Certificate> $metadataSigners the certificates the metadata are verified under, none when the channel is trusted
-     * @param list<EmailDomain> $domains the domains it answers for, one at least
-     * @param list<ProfileAttribute> $profile the attributes that fill the profile, one per claim
-     * @param bool $requireEncryptedAssertions whether an assertion of it in clear is refused (S-67)
-     * @param string|null $addressParameter the parameter of its single sign-on service that takes the address, null
-     *                                      when it reads none (S-68)
+     * @param list<Certificate> $metadataSigners none when the channel is trusted
+     * @param list<EmailDomain> $domains
+     * @param list<ProfileAttribute> $profile
      *
      * @throws InvalidArgumentException when the declaration does not hold together (section 6.10 step 1)
      */
@@ -82,12 +69,7 @@ final readonly class UpstreamIdentityProvider implements PeerInterface
     }
 
     /**
-     * S-42: an upstream identity provider is never the tenant itself, declared under the entity ID of the identity
-     * provider of the tenant, whose assertions its service provider would then take for another's, or under the
-     * entity ID of its service provider, one entity ID naming two roles (S-38). Compared exactly, as entity IDs are.
-     *
-     * @param string|null $identityProvider the entity ID of the identity provider of the tenant, null when unknown yet
-     * @param string|null $serviceProvider the entity ID of the service provider of the tenant, null when unknown yet
+     * S-38, S-42
      *
      * @throws InvalidArgumentException when the entity ID is one of the tenant's own
      */
@@ -108,12 +90,8 @@ final readonly class UpstreamIdentityProvider implements PeerInterface
     }
 
     /**
-     * The upstream provider of the core this declaration is (S-60): its entity ID its name, its domains, and the claims
-     * of the profile of the core its attributes fill, so that the login page, the first sign-in and the refusal of a
-     * local credential read its domains by the one rule of the core, whatever protocol declared it. A telephone number,
-     * which an attribute may fill (S-45) and which is no claim of that profile (Profile::claims()), is not among them:
-     * the sign-in that reads an assertion reads it apart (issue #784), and a declaration that fills one is a provider
-     * all the same, and never a login page that fails.
+     * S-60. A telephone number an attribute fills is left out, being no claim of the profile of the core
+     * (Profile::claims()): the sign-in reads it apart.
      */
     public function provider(): UpstreamProvider
     {
@@ -129,11 +107,8 @@ final readonly class UpstreamIdentityProvider implements PeerInterface
     }
 
     /**
-     * S-68: the hint of the address the discovery of the login page was given, for the request of a sign-on at this
-     * provider; none when it declares no parameter, when no address was given, when the core does not read it, its
-     * domain written as its A-label (S-60), and when this provider does not answer for its domain, so that an address
-     * goes to the authority of its domain and to no other provider. A hint that cannot be built is no refusal: the
-     * request goes without it.
+     * S-68: none unless this provider answers for the domain of the address, so that the address goes to no other
+     * provider. A hint that cannot be built is no refusal: the request goes without it.
      */
     public function addressHint(?string $address): ?AddressHint
     {
@@ -150,10 +125,6 @@ final readonly class UpstreamIdentityProvider implements PeerInterface
         return $this->provider()->answersFor($domain) ? new AddressHint($this->addressParameter, $read) : null;
     }
 
-    /**
-     * Whether its metadata are verified under the signers it pins, `readSigned()`, rather than trusted by the
-     * channel they come through, `readTrusted()` (S-42).
-     */
     public function readsSigned(): bool
     {
         return $this->metadataSigners !== [];

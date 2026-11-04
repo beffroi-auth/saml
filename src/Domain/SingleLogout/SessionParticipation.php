@@ -13,12 +13,6 @@ use Beffroi\Core\Domain\Tenant\Tenant;
 use DateTimeImmutable;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * A service provider's part in a session of the core (spec/saml.md S-26): the session an assertion was written from,
- * the service provider it went to, and the instant of its first sign-on there. One per session and service provider,
- * written once whatever the number of sign-ons, deleted with the session; what the logout the identity provider starts
- * reads to tell each service provider of an ended session (issue #735).
- */
 final readonly class SessionParticipation implements ClassifiedFieldsInterface
 {
     public function __construct(
@@ -31,9 +25,6 @@ final readonly class SessionParticipation implements ClassifiedFieldsInterface
     }
 
     /**
-     * The service provider names an application, as the client of an authorization code does; the session is joined
-     * by its identifier, as the codes join it.
-     *
      * @return array<string, FieldClassificationInterface>
      */
     public static function classifiedFields(): array

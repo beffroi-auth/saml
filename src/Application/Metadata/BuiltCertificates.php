@@ -16,14 +16,9 @@ use Beffroi\Saml\Port\CertificateIssuerInterface;
 use function str_starts_with;
 
 /**
- * The certificates a process built for the SAML keys of its tenants and keeps (spec/saml.md S-3, S-65): one per key,
- * built once and kept for as long as the key is in service, ranged by tenant and "kid". What is kept is the
- * certificate, which is public, and never the key, which is opened by the KMS for the one signature the certificate
- * carries and dropped (S-1): the KMS is asked at most once per key and per process for a certificate. A certificate
- * built again is the same bytes, so that two processes publish the same one.
+ * spec/saml.md S-1, S-3, S-65
  *
- * The way SigningCertificates keeps the certificates of the signing keys, and EncryptionCertificates those of the keys
- * the upstream identity providers encrypt for, written once.
+ * Keeps the certificate, which is public, and never the key, dropped once it has signed the certificate.
  */
 final class BuiltCertificates
 {
@@ -39,10 +34,9 @@ final class BuiltCertificates
     }
 
     /**
-     * The certificate of a key, the one this process built, or built from the key opened by the KMS and dropped.
-     *
-     * @throws KmsUnavailableException when the KMS does not answer to open a key whose certificate is not built yet
-     * @throws InvalidArgumentException when the key is not one the issuer certifies, or not the one its public JWK says
+     * @throws KmsUnavailableException
+     * @throws InvalidArgumentException when the key is not one the issuer certifies, or not the one its public JWK
+     *                                  says
      * @throws RuntimeException when the certificate cannot be built, or does not verify
      */
     public function of(TenantKey $key): Certificate
@@ -54,10 +48,10 @@ final class BuiltCertificates
     }
 
     /**
-     * The certificate of a key already opened, built from it when it is not built yet, so that the KMS is not asked
-     * again (S-37).
+     * S-37
      *
-     * @throws InvalidArgumentException when the key is not one the issuer certifies, or not the one its public JWK says
+     * @throws InvalidArgumentException when the key is not one the issuer certifies, or not the one its public JWK
+     *                                  says
      * @throws RuntimeException when the certificate cannot be built, or does not verify
      */
     public function ofOpened(UnsealedKey $key): Certificate
@@ -66,10 +60,7 @@ final class BuiltCertificates
     }
 
     /**
-     * The certificates of the keys of that tenant that are not in service forgotten: a key that has left the service
-     * has nothing more to publish.
-     *
-     * @param list<TenantKey> $inService the keys of the tenant in service
+     * @param list<TenantKey> $inService
      */
     public function keepInService(Tenant $tenant, array $inService): void
     {

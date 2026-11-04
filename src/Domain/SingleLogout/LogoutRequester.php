@@ -9,17 +9,11 @@ use Beffroi\Core\Exception\InvalidArgumentException;
 use function sprintf;
 
 /**
- * What the answer to a LogoutRequest is written from (spec/saml.md S-27, S-34): the service provider that sent it, its
- * ID, the RelayState it carried, and the binding and the URL of the SingleLogoutService its answer goes to, resolved
- * when it was received. Nothing of the principal: the answer names none, so that a chain that keeps it while the other
- * service providers are told (S-32) keeps no NameID.
+ * It holds nothing of the principal, so that a chain that keeps it while the other service providers are told keeps no
+ * NameID (S-32).
  */
 final readonly class LogoutRequester
 {
-    /**
-     * @param string $answerBinding the URI of the binding of the SingleLogoutService the answer goes to
-     * @param string $answerLocation its ResponseLocation, or else its Location (SAML Metadata §2.2.2)
-     */
     public function __construct(
         public string $serviceProvider,
         public string $requestId,
@@ -46,7 +40,7 @@ final readonly class LogoutRequester
     /**
      * @param array<array-key, mixed> $document
      *
-     * @throws InvalidArgumentException when a member is missing or is not what a requester holds
+     * @throws InvalidArgumentException
      */
     public static function fromDocument(array $document): self
     {

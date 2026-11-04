@@ -23,16 +23,7 @@ use Beffroi\Xml\Core\Exception\RefusedXml;
 use InvalidArgumentException;
 
 /**
- * The answer to a LogoutRequest written with saml2-model's objects and sent through saml2-bindings (spec/saml.md
- * section 6.5 step 4, S-27): a LogoutResponse of a new ID to the single logout service resolved when the request was
- * received, its InResponseTo the ID of the request, its Issuer the entity ID of the tenant, its Status the one of S-24
- * or of S-34;
- * signed by the active SAML key of the tenant under RSA-SHA256 (TenantSigning), over the query string by RedirectSender
- * for HTTP-Redirect, in its XML by PostSender for HTTP-POST; the RelayState received handed back as it is. At the
- * single logout service, the key is opened by open() before the request is read (section 6.5 step 1), the core holding
- * it open for the process, so that answer() finds it open in that request; at the route that resumes a chain, where
- * open() is not called, answer() takes it from the core, which opens it unless the process holds it already (section
- * 6.5 step 4).
+ * spec/saml.md section 6.5 step 4, S-27
  */
 final readonly class ModelSignOutResponder implements SignOutResponderInterface
 {

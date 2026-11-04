@@ -10,12 +10,9 @@ use Beffroi\Saml\Port\AcceptedMetadataRepositoryInterface;
 use Beffroi\Saml\Port\ServiceProvidersInterface;
 
 /**
- * The service provider the unverified Issuer of a message names, which single sign-on and single logout read the same
- * way (spec/saml.md section 6.3 step 1, section 6.5 step 1): its declaration among those of the tenant, and its accepted
- * document, read back once with readTrusted(), the channel being its own sealed store. No declaration, no accepted
- * document, or a document the reading refuses now, is a MetadataRefusedException naming the rule, which the receiver
- * of each message turns into its own refusal: the endpoint of the message is not established, so it gets no SAML
- * answer.
+ * spec/saml.md section 6.3 step 1, section 6.5 step 1
+ *
+ * The accepted document is read back with readTrusted(), the channel being its own sealed store.
  */
 final readonly class DeclaredServiceProviderReader
 {
@@ -27,7 +24,7 @@ final readonly class DeclaredServiceProviderReader
     }
 
     /**
-     * @param string|null $issuer the unverified Issuer of the message, null when it carries none
+     * @param string|null $issuer the unverified Issuer of the message
      *
      * @throws MetadataRefusedException
      */

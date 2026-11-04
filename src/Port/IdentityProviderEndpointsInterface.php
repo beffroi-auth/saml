@@ -9,15 +9,12 @@ use Beffroi\Saml\Domain\Metadata\IdentityProviderEndpoints;
 use LogicException;
 
 /**
- * Where the identity provider of a tenant is served (spec/saml.md section 6.1 step 3): routing belongs to the
- * integration, which locates the endpoints under the issuer of the tenant and never under what a request carried
- * (S-4).
+ * Located under the issuer of the tenant, never under what a request carried (spec/saml.md S-4).
  */
 interface IdentityProviderEndpointsInterface
 {
     /**
-     * @throws LogicException when the routes are not mounted under the issuer of the tenant: metadata naming
-     *                        endpoints nobody serves is not metadata to publish
+     * @throws LogicException when the routes are not mounted under the issuer of the tenant
      */
     public function locate(Tenant $tenant): IdentityProviderEndpoints;
 }

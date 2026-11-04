@@ -34,17 +34,12 @@ use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
 
 /**
- * Single sign-on, from the request the application received to the form the browser posts (spec/saml.md section 6.4): the
- * request accepted and its service provider declared (steps 1 and 2), then, at each step the browser reaches, what the
- * request allows (step 4), the subject and the attributes (steps 5 and 6) and the answer written (step 7), the key its
- * assertion is encrypted for read from the accepted metadata of a service provider that asks for it (S-19). Whether a
- * login is needed is answered here and nowhere else; where the request waits for it is the application's (step 3). A
- * success announces the service provider's part in the session, which the application records asynchronously (S-26).
+ * spec/saml.md section 6.4, S-19, S-26
  */
 final readonly class SingleSignOn
 {
     /**
-     * The formats of a NameIDPolicy answered with the persistent identifier (Core §8.3.1, §8.3.7).
+     * The formats of a NameIDPolicy answered with the persistent identifier (SAML Core §8.3.1, §8.3.7).
      */
     private const array ANSWERED_FORMATS = [
         PersistentNameId::FORMAT,
@@ -79,7 +74,7 @@ final readonly class SingleSignOn
     }
 
     /**
-     * @param array<array-key, mixed> $fields the fields of the form (section 6.8)
+     * @param array<array-key, mixed> $fields
      *
      * @throws SignOnRefusedException
      */
@@ -92,16 +87,11 @@ final readonly class SingleSignOn
     }
 
     /**
-     * The form that answers the request, or null when the browser has to sign in first (section 6.4 step 4, S-17).
+     * Null when the browser has to sign in first (section 6.4 step 4, S-17).
      *
-     * @param AuthenticationSession|null $session the session the browser holds, if any
-     * @param RequestContext $context the request that reached the answer, which the event of a success carries (S-26)
-     *
-     * @throws SignOnRefusedException when the request waited too long, or its service provider is no longer declared
-     *                                as it was, or asks for its assertions encrypted and its accepted metadata hold no
-     *                                key for it (S-19)
-     * @throws KeyNotFoundException when the tenant holds no active SAML key
-     * @throws KmsUnavailableException when the KMS does not answer
+     * @throws SignOnRefusedException
+     * @throws KeyNotFoundException
+     * @throws KmsUnavailableException
      * @throws RuntimeException when the salt of the tenant can neither be read nor drawn
      */
     public function answer(Tenant $tenant, SignOnRequest $request, ?AuthenticationSession $session, RequestContext $context): ?PostedForm
@@ -128,7 +118,7 @@ final readonly class SingleSignOn
     }
 
     /**
-     * Section 6.4 steps 5 to 7, and S-26.
+     * Section 6.4 steps 5 to 7, S-26
      *
      * @throws SignOnRefusedException
      * @throws KeyNotFoundException
@@ -161,8 +151,7 @@ final readonly class SingleSignOn
     }
 
     /**
-     * What the request asks for that is never written (section 6.4 step 4): a format of NameID other than the
-     * persistent one, a class of authentication context.
+     * Section 6.4 step 4
      */
     private static function refusal(SignOnRequest $request): ?SignOnStatus
     {
@@ -174,9 +163,9 @@ final readonly class SingleSignOn
     }
 
     /**
-     * S-17: the session that answers, an active session of the tenant, with a proof made since the request when it
-     * says ForceAuthn; null when the browser has to sign in. The core keeps a proof to the second, so the instant the
-     * request was received is compared at that precision: a login typed in that second is not older than it.
+     * S-17
+     *
+     * The core keeps a proof to the second, so the instant of the request is compared at that precision.
      */
     private static function answering(Tenant $tenant, SignOnRequest $request, ?AuthenticationSession $session, DateTimeImmutable $now): ?AuthenticationSession
     {
@@ -188,7 +177,7 @@ final readonly class SingleSignOn
     }
 
     /**
-     * Section 6.4 step 2: the declaration of the service provider, still declared.
+     * Section 6.4 step 2
      *
      * @throws SignOnRefusedException
      */
@@ -203,10 +192,10 @@ final readonly class SingleSignOn
     }
 
     /**
-     * S-19, section 6.4 steps 2 and 7: the key the assertion is encrypted for, the first certificate for encryption of
-     * the accepted metadata of a service provider whose declaration asks for it, read back now; null for one that does
-     * not ask (S-7). A provider that asks and whose accepted document holds no such key, or reads back no more, is
-     * refused: nothing is sent in clear.
+     * S-19, section 6.4 steps 2 and 7
+     *
+     * Null for a provider that does not ask for encryption; one that asks and has no key for it is refused, so that
+     * nothing is sent in clear.
      *
      * @throws SignOnRefusedException
      */

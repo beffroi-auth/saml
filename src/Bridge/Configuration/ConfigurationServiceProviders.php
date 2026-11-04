@@ -19,13 +19,7 @@ use function is_array;
 use function sprintf;
 
 /**
- * The service providers declared in the configuration of the deployment (spec/saml.md S-5, section 5.2), keyed by
- * entity ID, validated when they are built (section 6.2 step 1): a declaration that does not hold together fails
- * there, naming the service provider, an attribute mapping a claim the provider does not serve among them (S-16). The
- * application builds this object when its container is compiled, every claim mapped served, then again against the claims
- * the provider serves right after, in the same build, so that it fails the build of the deployment rather than its
- * first refresh; a declaration holding an environment variable is left to its first use. They are those of one tenant,
- * named by its slug, as the clients of the configuration are.
+ * spec/saml.md S-5, S-16, section 5.2, section 6.2 step 1
  */
 final readonly class ConfigurationServiceProviders implements ServiceProvidersInterface
 {
@@ -35,9 +29,7 @@ final readonly class ConfigurationServiceProviders implements ServiceProvidersIn
     private array $serviceProviders;
 
     /**
-     * @param array<array-key, mixed> $definitions by entity ID: metadata, metadata_signers, attributes keyed by
-     *                                             attribute name (claim, name_format, friendly_name),
-     *                                             encrypt_assertions, signs_authn_requests
+     * @param array<array-key, mixed> $definitions by entity ID
      *
      * @throws InvalidArgumentException when a declaration does not hold together
      */

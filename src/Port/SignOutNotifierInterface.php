@@ -11,26 +11,16 @@ use Beffroi\Saml\Domain\SingleLogout\SentSignOutNotice;
 use Beffroi\Saml\Domain\SingleLogout\SignOutNotice;
 use Beffroi\Saml\Exception\SignOutNoticeRefusedException;
 
-/**
- * The LogoutRequest the identity provider sends a service provider of an ended session (spec/saml.md S-30, S-31),
- * written to the first single logout service of its accepted metadata, read back when it is written, and signed by the
- * active SAML key of the tenant.
- */
 interface SignOutNotifierInterface
 {
-    /**
-     * The URL of the single logout service $serviceProvider would be told at, or null when it cannot be told: no
-     * declaration, no accepted document, a document the reading refuses now, no single logout service (S-30).
-     */
     public function destination(Tenant $tenant, string $serviceProvider): ?string;
 
     /**
-     * The request written and signed, or null when its service provider cannot be told, as destination() says.
+     * Null exactly when destination() is.
      *
-     * @throws KeyNotFoundException when the tenant holds no active SAML key
-     * @throws KmsUnavailableException when the KMS does not answer to open it
-     * @throws SignOutNoticeRefusedException when the request for that service provider is one the model or the binding
-     *                                       refuses to write, which passes it over (S-30)
+     * @throws KeyNotFoundException
+     * @throws KmsUnavailableException
+     * @throws SignOutNoticeRefusedException
      */
     public function notify(Tenant $tenant, SignOutNotice $notice): ?SentSignOutNotice;
 }

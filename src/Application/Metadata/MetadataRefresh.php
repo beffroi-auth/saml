@@ -14,14 +14,7 @@ use Exception;
 use Psr\Clock\ClockInterface;
 
 /**
- * The metadata of a peer registered the first time and refreshed every time after, one procedure for either role
- * (spec/saml.md section 6.2, section 6.10, S-42): read from the location its declaration names, by the channel or
- * under the signers it pins (S-5), held by the role to what it requires of the document, never expired, nor older than
- * the document accepted when it was read under those signers (S-6), and kept as the bytes that were read (S-8). One
- * per role, built with the role and the repository of its table.
- *
- * A refusal leaves the accepted document as it was and is returned rather than thrown, so that a refresh of every
- * peer of the role reads each of them whatever one answers.
+ * spec/saml.md section 6.2, section 6.10, S-5, S-6, S-8, S-42
  *
  * @template TPeer of PeerInterface
  */
@@ -39,9 +32,7 @@ final readonly class MetadataRefresh
     }
 
     /**
-     * Every peer of the role the tenant declares, in the order of the declaration, each one isolated from the others:
-     * an exception that is not a refusal, a store or a reader that fails, is reported for the peer it was thrown for,
-     * and the next one is read.
+     * Each peer isolated from the others: what one throws is reported for it, and the next one is read.
      *
      * @return list<MetadataRefreshment>
      */
@@ -72,7 +63,7 @@ final readonly class MetadataRefresh
     }
 
     /**
-     * Section 6.2 steps 2 to 7.
+     * Section 6.2 steps 2 to 7
      *
      * @param TPeer $peer
      *

@@ -6,10 +6,6 @@ namespace Beffroi\Saml\Domain\SingleLogout;
 
 use DateTimeImmutable;
 
-/**
- * What the answer to a LogoutRequest is written from (spec/saml.md section 6.5 step 4, S-27, S-34): the entity ID of
- * the identity provider, what the request it answers needs of it, its status and the instant it is issued.
- */
 final readonly class SignOutResponse
 {
     public function __construct(

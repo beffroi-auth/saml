@@ -9,9 +9,8 @@ use function preg_match;
 use function str_starts_with;
 
 /**
- * Where the metadata of a peer are read from, a service provider (spec/saml.md S-5) or an upstream identity provider
- * (S-42): an `https` URL, or the absolute path of a file of the deployment, and nothing else, a plain `http` URL
- * included (decision 0006). The channel is what `readTrusted()` trusts when the declaration pins no signer.
+ * An https URL or the absolute path of a file, never plain http (decision 0006): the channel is what readTrusted()
+ * trusts when the declaration pins no signer.
  */
 final readonly class MetadataLocation
 {

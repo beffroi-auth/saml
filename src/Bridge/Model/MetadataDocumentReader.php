@@ -21,14 +21,7 @@ use Psr\Clock\ClockInterface;
 use function sprintf;
 
 /**
- * A metadata document of a peer of either role read by saml2-model's MetadataReader, loaded by SamlLoader
- * (spec/saml.md section 6.2 step 3, section 6.10 step 3): model.md section 6.5 in order, the validity of M-7 against
- * the clock of the deployment among it. trusted() for a document its channel vouches for, signed() for one signed
- * under the certificates a declaration pins, which then carries a validUntil, so that it is held to the document
- * accepted (S-6). A refusal of the model, of Core or of Dsig becomes MetadataRefusedException with its message, which
- * names a rule and never a value of the document (M-16).
- *
- * What a role reads of the entity, the role itself and what it requires of it, is the reader of that role's.
+ * spec/saml.md section 6.2 step 3, section 6.10 step 3, S-6, M-7, M-16
  */
 final readonly class MetadataDocumentReader
 {
@@ -83,8 +76,6 @@ final readonly class MetadataDocumentReader
     }
 
     /**
-     * The certificates of a role, each the base64 of an X509Certificate the model checked by building its key.
-     *
      * @param list<string> $base64
      *
      * @return list<Certificate>
@@ -101,10 +92,9 @@ final readonly class MetadataDocumentReader
     }
 
     /**
-     * S-11, S-43: an endpoint a browser is sent to is an https URL on a host (EndpointLocation), at every reading; the
-     * refusal names the endpoint and never its value (M-16).
+     * S-11, S-43, M-16
      *
-     * @param string $party who sends the browser there, "the identity provider" or "the service provider"
+     * @param string $party "the identity provider" or "the service provider"
      *
      * @throws MetadataRefusedException
      */

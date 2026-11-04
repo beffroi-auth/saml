@@ -13,23 +13,18 @@ use Beffroi\Saml\Exception\AssertionRefusedException;
 use Beffroi\Saml\Exception\UpstreamAuthenticationFailedException;
 
 /**
- * The response an upstream identity provider posted to the assertion consumer service of a tenant (spec/saml.md S-53,
- * section 6.14 step 3): read from the fields of the form, validated under the accepted metadata of that provider and
- * never under a provider the message names, with the key of that provider to open an assertion it encrypted (S-66),
- * as the answer to the request of that ID, its assertion remembered by the replay store of S-23.
+ * The response is validated under the accepted metadata of the provider the request went to, never under one the
+ * message names.
  */
 interface ResponseReceiverInterface
 {
     /**
-     * @param UpstreamIdentityProvider $provider the declaration of the provider the request went to
-     * @param array<array-key, mixed> $fields the fields of the form, as the application received them (bindings.md 6.8)
-     * @param string $requestId the ID of the request the response answers (M-10)
+     * @param array<array-key, mixed> $fields
      *
-     * @throws AssertionRefusedException when the provider has no accepted document, or the reading back, the binding,
-     *                                   the model, Dsig or Enc refuses, the message naming the rule and never a value
-     * @throws UpstreamAuthenticationFailedException when the status of the response, held to the request, is not Success
+     * @throws AssertionRefusedException
+     * @throws UpstreamAuthenticationFailedException
      * @throws KeyNotFoundException when a key of the provider retired between the reading of the store and its opening
-     * @throws KmsUnavailableException when the KMS does not answer to open a key of the provider
+     * @throws KmsUnavailableException
      */
     public function receive(Tenant $tenant, UpstreamIdentityProvider $provider, array $fields, string $requestId): VerifiedAssertion;
 }

@@ -7,18 +7,8 @@ namespace Beffroi\Saml\Domain\Metadata;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use function sprintf;
 
-/**
- * The answer of a metadata endpoint of a tenant, the one of its identity provider or of its service provider
- * (spec/saml.md section 6.1 step 6, section 6.9 step 5): the serialized md:EntityDescriptor, its media type, and how
- * long an HTTP cache may hold it, the max-age of the keys of the tenant, minutes, so that a peer that fetches it finds
- * the next certificate far inside the staging window of a SAML key (S-2, S-12, S-40); how long the peer keeps what it
- * fetched is the cacheDuration the document carries.
- */
 final readonly class PublishedMetadata
 {
-    /**
-     * The media type of SAML metadata.
-     */
     public const string CONTENT_TYPE = 'application/samlmetadata+xml';
 
     /**
@@ -27,7 +17,7 @@ final readonly class PublishedMetadata
     public array $headers;
 
     /**
-     * @param int $maxAge how long a cache may hold the document, in seconds
+     * @param int $maxAge in seconds
      *
      * @throws InvalidArgumentException when the lifetime is not a number of seconds
      */
@@ -42,9 +32,6 @@ final readonly class PublishedMetadata
     }
 
     /**
-     * The rule of the lifetime, which each handler checks when it is built and the answer again when one is built by
-     * hand: one rule, written here alone.
-     *
      * @throws InvalidArgumentException when the lifetime is not a number of seconds
      */
     public static function assertCacheLifetime(int $maxAge): void
@@ -55,14 +42,12 @@ final readonly class PublishedMetadata
     }
 
     /**
-     * The rule of S-12, which each handler checks when it is built and the configuration of the application when it is read:
-     * a service provider that honours the cacheDuration fetches the metadata again, and the next certificate with it,
-     * before the staged key signs, which a cacheDuration as long as the staging window would not leave it time for.
+     * S-12: a service provider that honours the cacheDuration has the next certificate before the staged key signs.
      *
-     * @param int $cacheDuration how long a service provider may keep the metadata, in seconds
-     * @param int $stagingDelay how long a staged SAML key is published before it signs, in seconds
+     * @param int $cacheDuration in seconds
+     * @param int $stagingDelay in seconds
      *
-     * @throws InvalidArgumentException when the cacheDuration is under one second, or not shorter than the staging delay
+     * @throws InvalidArgumentException when the cacheDuration is under a second or not under the staging delay
      */
     public static function assertCacheDuration(int $cacheDuration, int $stagingDelay): void
     {

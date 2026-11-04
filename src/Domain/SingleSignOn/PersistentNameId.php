@@ -12,17 +12,14 @@ use SensitiveParameter;
 use function strlen;
 
 /**
- * The persistent identifier of a user at one service provider (spec/saml.md S-13, Core §8.3.7): the SHA-256 of the
- * entity ID of the service provider, the "sub" of the user and the salt of the tenant, each followed by a NUL, in
- * base64url. Computed and never drawn, it is the same at every login, in every worker and after a restore; two service
- * providers get two values nobody relates without the salt, and none of them is the "sub".
+ * spec/saml.md S-13, Core §8.3.7
  */
 final readonly class PersistentNameId
 {
     public const string FORMAT = 'urn:oasis:names:tc:SAML:2.0:nameid-format:persistent';
 
     /**
-     * Core §8.3.7.
+     * Core §8.3.7
      */
     private const int MAX_LENGTH = 256;
 
@@ -38,8 +35,7 @@ final readonly class PersistentNameId
     }
 
     /**
-     * @param string $serviceProvider the entity ID of the service provider, as its declaration holds it
-     * @param string $salt the secret of the tenant (PersistentIdentifierSaltInterface)
+     * @param string $serviceProvider the entity ID as the declaration of the service provider holds it
      */
     public static function derive(string $serviceProvider, Subject $subject, #[SensitiveParameter] string $salt): self
     {

@@ -10,11 +10,6 @@ use function base64_encode;
 use function chunk_split;
 use function is_string;
 
-/**
- * An X.509 certificate as an X509Certificate of metadata carries it (spec/saml.md section 5.1): the base64 of its DER,
- * in the alphabet of RFC 4648 §4, with its padding and nothing else, so that what is published is what was built.
- * What it holds is public; the key it is around is never here (S-1).
- */
 final readonly class Certificate
 {
     /**
@@ -29,10 +24,6 @@ final readonly class Certificate
         }
     }
 
-    /**
-     * The certificate in the textual encoding of RFC 7468 §5, lines of 64 characters, for what takes a PEM: the
-     * KeyInfo of every signature of the provider (S-37).
-     */
     public function pem(): string
     {
         return "-----BEGIN CERTIFICATE-----\n" . chunk_split($this->base64, 64, "\n") . "-----END CERTIFICATE-----\n";

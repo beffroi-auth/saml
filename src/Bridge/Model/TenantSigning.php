@@ -19,11 +19,7 @@ use Beffroi\Xml\Dsig\PrivateKey;
 use Beffroi\Xml\Dsig\SignatureAlgorithm;
 
 /**
- * The active SAML key of a tenant as Dsig signs with it, under RSA-SHA256 (spec/saml.md S-15, S-27), which every
- * answer of the identity provider is signed by: the core's key, opened by the KMS once per process
- * (KeptSigningKeyProviderInterface), turned into a key of OpenSSL in memory for the call and dropped with it (S-1);
- * and its certificate, the one the metadata publish for that key (SigningCertificates), which every signature carries
- * in its KeyInfo (S-37).
+ * spec/saml.md S-15, S-27, S-37. The private key is built for each call and never kept (S-1).
  */
 final readonly class TenantSigning
 {
@@ -35,8 +31,8 @@ final readonly class TenantSigning
     }
 
     /**
-     * @throws KeyNotFoundException when the tenant holds no active SAML key
-     * @throws KmsUnavailableException when the KMS does not answer to open it
+     * @throws KeyNotFoundException
+     * @throws KmsUnavailableException
      * @throws InvalidKey when Dsig refuses to sign with it, under 2 048 bits (D-16)
      * @throws InvalidArgumentException when its private half is not the one of its public JWK, or not RSA
      * @throws RuntimeException when its certificate cannot be built, or does not verify

@@ -19,10 +19,7 @@ use function sprintf;
 use function strtr;
 
 /**
- * The private half of a SAML key of a tenant, opened by the KMS, as a key of OpenSSL in memory (spec/saml.md S-1): its
- * modulus and its exponent first compared with those of the public JWK the metadata publishes, so that nothing is
- * signed with a key that is not that one. What signs the certificate of the key and what signs an assertion both take
- * it from here; it goes out of scope with the signature it was made for.
+ * spec/saml.md S-1
  */
 final readonly class RsaPrivateKey
 {
@@ -70,10 +67,8 @@ final readonly class RsaPrivateKey
     }
 
     /**
-     * The same key as a PEM in memory, for what takes a PEM.
-     *
      * @throws InvalidArgumentException
-     * @throws RuntimeException when OpenSSL cannot export it
+     * @throws RuntimeException
      */
     public static function pem(UnsealedKey $key): string
     {
@@ -85,8 +80,6 @@ final readonly class RsaPrivateKey
     }
 
     /**
-     * One member of a JWK, a base64url string without padding (RFC 7518 §6.3), as bytes.
-     *
      * @param array<string, string> $jwk
      *
      * @throws InvalidArgumentException

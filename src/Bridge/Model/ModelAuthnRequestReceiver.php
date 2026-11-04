@@ -21,16 +21,7 @@ use Beffroi\Xml\Core\Exception\RefusedXml;
 use Psr\Clock\ClockInterface;
 
 /**
- * An authentication request received over HTTP-Redirect or HTTP-POST and validated by saml2-model (spec/saml.md
- * section 6.3, section 6.4 step 1): decoded by the receiver of its binding, its service provider chosen by its
- * unverified Issuer among the declarations of the tenant, the accepted document of that provider read back once, the
- * signature its requests need (S-9), the two parties validate() is handed, never the identity provider the metadata
- * publish, and the URL of the single sign-on service of the tenant as the URL of arrival (section 6.8). One loader,
- * SamlLoader's, decodes and validates (M-14).
- *
- * What the binding, the model, Core or Dsig refuse, and a service provider nobody declared or registered, is a
- * SignOnRefusedException carrying the message of the rule, which names no value (M-16, B-11): the endpoint of the
- * request is not established, so it gets no SAML answer.
+ * spec/saml.md section 6.3, section 6.4 step 1, section 6.8, S-9, M-14, M-16, B-11
  */
 final readonly class ModelAuthnRequestReceiver implements AuthnRequestReceiverInterface
 {
@@ -74,7 +65,7 @@ final readonly class ModelAuthnRequestReceiver implements AuthnRequestReceiverIn
     }
 
     /**
-     * Section 6.3 in order.
+     * Section 6.3, in order
      *
      * @throws SignOnRefusedException
      */

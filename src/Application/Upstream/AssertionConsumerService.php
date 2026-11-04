@@ -30,11 +30,7 @@ use function count;
 use function in_array;
 
 /**
- * The assertion consumer service of the service provider of a tenant (spec/saml.md S-53 to S-57, section 6.14 steps 2
- * to 7): the response an upstream identity provider posted, taken as the answer to the request the browser remembers,
- * and what it says of the person, then the person itself, the core's first sign-in. The request remembered, the
- * session, what the client asked and where the browser goes are the application's, which holds the HTTP session and the
- * interaction (S-52, S-58, S-59).
+ * spec/saml.md S-53 to S-57, section 6.14 steps 2 to 7
  */
 final readonly class AssertionConsumerService
 {
@@ -47,16 +43,15 @@ final readonly class AssertionConsumerService
     }
 
     /**
-     * Section 6.14 steps 2 to 6.
+     * Section 6.14 steps 2 to 6
      *
-     * @param array<array-key, mixed> $fields the fields of the form the browser posted
+     * @param array<array-key, mixed> $fields
      * @param string $identityProvider the entity ID of the provider the remembered request went to
-     * @param string $requestId the ID of that request
      *
-     * @throws AssertionRefusedException when the response is not taken, naming the rule and never a value (M-16)
-     * @throws UpstreamAuthenticationFailedException when the provider authenticated nobody (S-58)
-     * @throws KeyNotFoundException when a key of the provider retired between the reading of the store and its opening
-     * @throws KmsUnavailableException when the KMS does not answer to open a key of the provider
+     * @throws AssertionRefusedException naming the rule and never a value (M-16)
+     * @throws UpstreamAuthenticationFailedException
+     * @throws KeyNotFoundException
+     * @throws KmsUnavailableException
      */
     public function receive(Tenant $tenant, array $fields, string $identityProvider, string $requestId): UpstreamAssertion
     {
@@ -65,7 +60,7 @@ final readonly class AssertionConsumerService
             throw new AssertionRefusedException('The identity provider the request went to is none this tenant declares (spec/saml.md S-53).');
         }
         $verified = $this->receiver->receive($tenant, $provider, $fields, $requestId);
-        // S-54: before anything of the assertion is read
+        // S-54: checked before anything of the assertion is read.
         if ($provider->requireEncryptedAssertions && ! $verified->encrypted) {
             throw new AssertionRefusedException('The identity provider is required to encrypt its assertions and sent one in clear (spec/saml.md S-54, S-67).');
         }
@@ -100,11 +95,11 @@ final readonly class AssertionConsumerService
     }
 
     /**
-     * Section 6.14 step 7, S-56: the groups the declaration maps the values to, found in the tenant by their names and
-     * never created, then the core's first sign-in, which finds the person by its linked identity, creates it at the
-     * first one and writes it, its groups and its telephone number in one unit.
+     * Section 6.14 step 7, S-56
      *
-     * @throws UpstreamProvisioningRefusedException when the provider may not create or write that person
+     * The groups the declaration maps to are found in the tenant by their names and never created.
+     *
+     * @throws UpstreamProvisioningRefusedException
      * @throws InvalidArgumentException when a claim is said in a form the profile refuses
      */
     public function personOf(Tenant $tenant, UpstreamAssertion $assertion, RequestContext $context): User
@@ -137,8 +132,9 @@ final readonly class AssertionConsumerService
     }
 
     /**
-     * S-55: the value of a persistent NameID, or else the one value of the attribute the declaration names; never the
-     * address of the person, whatever names it.
+     * S-55
+     *
+     * Never the address of the person, whatever names it.
      *
      * @throws AssertionRefusedException
      */
@@ -162,8 +158,7 @@ final readonly class AssertionConsumerService
     }
 
     /**
-     * S-55: whether a subject is the same mailbox as the address, its domain read by the one rule of the domain and its
-     * case folded; a subject that is no address is none.
+     * S-55
      */
     private static function isTheMailboxOf(string $subject, EmailAddress $email): bool
     {
@@ -175,8 +170,9 @@ final readonly class AssertionConsumerService
     }
 
     /**
-     * S-56: the one address of the attribute of the e-mail, its domain written as its A-label by the one rule of the
-     * domain (S-60) before the core reads the address, which refuses a domain outside ASCII.
+     * S-56, S-60
+     *
+     * The domain is written as its A-label before the core reads the address, which refuses a domain outside ASCII.
      *
      * @throws AssertionRefusedException
      */
@@ -189,13 +185,13 @@ final readonly class AssertionConsumerService
         try {
             return EmailAddress::ofAnySpelling($address);
         } catch (InvalidArgumentException) {
-            // the refusal of the core names the address, which no exception of a refusal carries (S-53)
+            // The refusal of the core names the address, which no refusal carries (S-53).
             throw new AssertionRefusedException('The attribute of the e-mail is no address whose domain the rule reads (spec/saml.md S-56, S-60).');
         }
     }
 
     /**
-     * The value of an attribute that holds one, null when it holds none or several.
+     * Null when the attribute holds none or several values.
      */
     private static function oneValue(VerifiedAssertion $verified, string $attribute): ?string
     {

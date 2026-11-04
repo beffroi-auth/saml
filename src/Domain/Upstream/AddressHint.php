@@ -16,26 +16,20 @@ use function strtolower;
 use function substr;
 
 /**
- * The address a person gave the login page, carried to the upstream identity provider that reads one in a parameter of
- * its single sign-on service (spec/saml.md S-68): the name its declaration gives that parameter, and the address, its
- * domain written as its A-label (S-60). SAML has no such hint (Core §3.4.1), so it is a parameter of the provider and
- * not of the protocol, and it is never read back: the person is who the signed assertion names.
+ * spec/saml.md S-68. SAML has no such hint (Core §3.4.1): it is a parameter of the provider, never read back, the
+ * person being who the signed assertion names.
  */
 final readonly class AddressHint
 {
-    /**
-     * The longest name of the parameter (section 7).
-     */
     public const int MAX_PARAMETER_LENGTH = 64;
 
     /**
-     * RFC 3986 §2.3: the unreserved characters, which a query carries as they are written.
+     * RFC 3986 §2.3
      */
     private const string UNRESERVED = '/^[A-Za-z0-9._~-]{1,64}\z/';
 
     /**
-     * bindings.md B-1: the six parameters of the binding, in lower case, which the name of the parameter is none of
-     * whatever its case.
+     * bindings.md B-1
      */
     private const array BINDING_PARAMETERS = ['samlrequest', 'samlresponse', 'samlencoding', 'relaystate', 'sigalg', 'signature'];
 
@@ -51,9 +45,8 @@ final readonly class AddressHint
     }
 
     /**
-     * S-68: the name of the parameter a declaration gives, one to 64 of the unreserved characters of RFC 3986 §2.3, so
-     * that it goes into a query as it is written, and none of the six parameters of the binding without regard to
-     * case, which a provider that reads its query so would take for one of them.
+     * S-68: none of the parameters of the binding, whatever its case, which a provider that reads its query so would
+     * take for one of them.
      *
      * @throws InvalidArgumentException
      */
@@ -74,10 +67,8 @@ final readonly class AddressHint
     }
 
     /**
-     * S-68: the URL with the hint in its query, after a "&" when it holds one and after a "?" otherwise, before its
-     * fragment; the name as it is written, unreserved characters only, and the address percent-encoded outside them,
-     * as the binding encodes its values (RFC 3986 §2.1). Appended to the URL of HTTP-Redirect, it comes after the
-     * Signature, outside the octets the signature covers (Bindings §3.4.4.1).
+     * S-68. On the URL of HTTP-Redirect, it comes after the Signature, outside the octets the signature covers
+     * (Bindings §3.4.4.1).
      */
     public function appendedTo(string $url): string
     {

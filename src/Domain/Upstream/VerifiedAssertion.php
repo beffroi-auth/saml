@@ -7,18 +7,10 @@ namespace Beffroi\Saml\Domain\Upstream;
 use function array_key_exists;
 use DateTimeImmutable;
 
-/**
- * What saml2-model accepted of a response of an upstream identity provider (spec/saml.md S-53), copied out of its
- * verified documents (model.md M-1), and nothing the service provider made of it yet: the NameID and whether its format
- * is persistent (S-55), the values of each attribute by its name, the AuthnInstant, the AuthnContextClassRef and the
- * SessionNotOnOrAfter of the authentication statement (S-57), and whether the assertion arrived encrypted (M-18,
- * S-54).
- */
 final readonly class VerifiedAssertion
 {
     /**
-     * @param array<string, list<string>> $attributes the values of each attribute by its name, in document order, an
-     *                                                attribute named twice merged (model.md section 6.1 step 11)
+     * @param array<string, list<string>> $attributes the values by attribute name, in document order
      */
     public function __construct(
         public string $nameId,
@@ -32,8 +24,6 @@ final readonly class VerifiedAssertion
     }
 
     /**
-     * The values of the attribute of that name, compared exactly (S-45), none when the assertion carries none.
-     *
      * @return list<string>
      */
     public function values(string $attribute): array

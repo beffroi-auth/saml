@@ -13,21 +13,18 @@ use function preg_match;
 use function sprintf;
 
 /**
- * The attribute that carries the groups of a person in the assertions of an upstream identity provider, and the name
- * of a group of the tenant each of its values stands for (spec/saml.md S-45). A value the map does not name is no
- * group, and no group is created from what a provider sends: the groups are the tenant's, found by their name when a
- * person signs in (issue #782), and nothing here reads one.
+ * spec/saml.md S-45. No group is created from what a provider sends: a value the map does not name is no group.
  */
 final readonly class GroupMapping
 {
     /**
-     * The attributes per statement of `model.md` section 7: an assertion carries no more values (section 7).
+     * The attributes per statement of model.md section 7: an assertion carries no more values.
      */
     public const int MAX_VALUES = 256;
 
     /**
-     * @param array<array-key, string> $groups the name of a group of the tenant by value of the attribute, compared
-     *                                         exactly; a value of digits alone is an integer key, as PHP keeps it
+     * @param array<array-key, string> $groups the group of the tenant by value of the attribute; a value of digits
+     *                                         alone is an integer key, as PHP keeps it
      *
      * @throws InvalidArgumentException when the attribute, a value or a group is not one (S-45)
      */
@@ -49,10 +46,6 @@ final readonly class GroupMapping
         }
     }
 
-    /**
-     * The name of the group of the tenant a value of the attribute stands for, compared exactly, or null when the map
-     * names none.
-     */
     public function groupOf(string $value): ?string
     {
         $group = $this->groups[$value] ?? null;

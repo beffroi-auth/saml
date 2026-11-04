@@ -11,25 +11,16 @@ use DateTimeImmutable;
 use Exception;
 use function sprintf;
 
-/**
- * An authentication request the identity provider accepted (spec/saml.md section 6.4 step 1), as it keeps it while
- * the browser that sent it signs in (S-18): the entity ID of its service provider, its ID, which the response answers,
- * the location of the assertion consumer service the model resolved among the accepted metadata (S-10), its
- * RelayState as it was received, what it asks of the login and of the identifier, and the instant it was received.
- * Nothing of the model is kept: the request is a value of this package, written to its document and read back whole.
- */
 final readonly class SignOnRequest
 {
     /**
-     * How long a request waits for its login, in seconds (section 7).
+     * Seconds a request waits for its login.
      */
     public const int PENDING = 600;
 
     private const string TIME = 'Y-m-d\TH:i:s.uP';
 
     /**
-     * @param string|null $nameIdFormat the Format of its NameIDPolicy, null when it has none or names no format
-     *
      * @throws InvalidArgumentException when a name it carries is empty
      */
     public function __construct(
@@ -48,9 +39,6 @@ final readonly class SignOnRequest
         }
     }
 
-    /**
-     * Ten minutes after it was received (S-18).
-     */
     public function expiresAt(): DateTimeImmutable
     {
         return $this->receivedAt->add(new DateInterval(sprintf('PT%dS', self::PENDING)));
@@ -77,7 +65,7 @@ final readonly class SignOnRequest
     /**
      * @param array<array-key, mixed> $document
      *
-     * @throws InvalidArgumentException when a member is missing or is not what a request holds
+     * @throws InvalidArgumentException
      */
     public static function fromDocument(array $document): self
     {

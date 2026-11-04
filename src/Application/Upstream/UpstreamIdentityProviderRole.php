@@ -19,10 +19,7 @@ use DateTimeImmutable;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * The upstream identity providers of a tenant as a role of the peers whose metadata are read (spec/saml.md section
- * 6.10): those the configuration declares (S-42), a document of one read by the channel or under the signers it pins,
- * its identity provider role, its keys and its single sign-on services held by the reader (S-42, S-43), its entity ID
- * the declared one, and its first document kept in the row of the upstream identity providers.
+ * spec/saml.md section 6.10, S-42, S-43
  *
  * @implements PeerRoleInterface<UpstreamIdentityProvider>
  */
@@ -45,7 +42,7 @@ final readonly class UpstreamIdentityProviderRole implements PeerRoleInterface
     }
 
     /**
-     * Section 6.10 steps 3 and 4.
+     * Section 6.10 steps 3 and 4
      */
     public function read(PeerInterface $peer, string $document): UpstreamMetadata
     {

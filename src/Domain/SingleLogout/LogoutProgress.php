@@ -11,21 +11,11 @@ use Beffroi\Core\Exception\InvalidArgumentException;
 use function is_string;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * Where a chain of logout stands (spec/saml.md S-32): the IDs of the sessions it is about, the service providers left
- * to tell (S-30), the one the outstanding request went to, whether one told so far did not answer Success or was passed
- * over, and where it ends (S-34): the answer to the service provider that asked, or the URL its starter names. What the
- * column of the chain holds is this document, written and read here.
- */
 final readonly class LogoutProgress
 {
     /**
-     * @param list<Uuid> $sessions the sessions ended, the ones the page of S-35 is about
-     * @param list<LogoutHop> $hops the service providers left to tell, in their order
-     * @param string|null $awaitingFrom the service provider the outstanding request went to
-     * @param bool $partial whether a service provider told did not answer Success, or was passed over
-     * @param LogoutRequester|null $requester the service provider whose request started the logout, answered last
-     * @param string|null $continueTo where the browser goes at the end when no service provider is to be answered
+     * @param list<Uuid> $sessions
+     * @param list<LogoutHop> $hops in the order they are told
      */
     public function __construct(
         public array $sessions,
@@ -37,41 +27,26 @@ final readonly class LogoutProgress
     ) {
     }
 
-    /**
-     * The next service provider to tell, null when every one has been.
-     */
     public function next(): ?LogoutHop
     {
         return $this->hops[0] ?? null;
     }
 
-    /**
-     * The next service provider taken off, as it is told or passed over.
-     */
     public function withoutNext(): self
     {
         return new self($this->sessions, array_slice($this->hops, 1), $this->awaitingFrom, $this->partial, $this->requester, $this->continueTo);
     }
 
-    /**
-     * A request sent to $serviceProvider, its answer awaited (S-33).
-     */
     public function awaiting(string $serviceProvider): self
     {
         return new self($this->sessions, $this->hops, $serviceProvider, $this->partial, $this->requester, $this->continueTo);
     }
 
-    /**
-     * The answer of the service provider awaited, Success or not (S-33).
-     */
     public function answered(bool $success): self
     {
         return new self($this->sessions, $this->hops, null, $this->partial || ! $success, $this->requester, $this->continueTo);
     }
 
-    /**
-     * A service provider passed over, which counts as one that did not answer Success (S-30).
-     */
     public function passedOver(): self
     {
         return new self($this->sessions, $this->hops, $this->awaitingFrom, true, $this->requester, $this->continueTo);
@@ -95,7 +70,7 @@ final readonly class LogoutProgress
     /**
      * @param array<array-key, mixed> $document
      *
-     * @throws InvalidArgumentException when a member is missing or is not what a chain holds
+     * @throws InvalidArgumentException
      */
     public static function fromDocument(array $document): self
     {

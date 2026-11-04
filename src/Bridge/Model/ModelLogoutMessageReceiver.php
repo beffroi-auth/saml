@@ -30,25 +30,7 @@ use Beffroi\Xml\Core\Loader;
 use Psr\Clock\ClockInterface;
 
 /**
- * A logout message received over HTTP-Redirect or HTTP-POST and validated by saml2-model, decoded by the receiver of
- * its binding with one loader, SamlLoader's, which validates too (M-14).
- *
- * A LogoutRequest (spec/saml.md section 6.5 step 1): its service provider read as single sign-on reads it (section 6.3
- * step 1), the single logout service its answer goes to resolved among those of the accepted metadata (S-27), then the
- * request validated by LogoutRequestValidator, its signature required and verified under the keys of those metadata,
- * its Destination the single logout service of the tenant (S-22), the validator remembering it last in the store of the
- * tenant (S-23).
- *
- * A LogoutResponse (section 6.6 step 4, S-33): the open chain whose outstanding request its unverified InResponseTo
- * names, found before any key is read; the service provider that request went to read back, never the one its Issuer
- * names; then the response validated by LogoutResponseValidator, its signature required, its Issuer that service
- * provider, its Destination the single logout service of the tenant, its InResponseTo that request, the validator
- * remembering it last in the same store.
- *
- * What the binding, the model, Core or Dsig refuse, a service provider nobody declared or registered, one whose
- * metadata list no single logout service, and an answer no open chain waits for, are a LogoutRefusedException carrying
- * the message of the rule, which names no value (M-16, B-11): nothing ends, nothing is sent, and a chain is left as it
- * was.
+ * spec/saml.md section 6.5 step 1, section 6.6 step 4
  */
 final readonly class ModelLogoutMessageReceiver implements LogoutMessageReceiverInterface
 {
@@ -105,9 +87,8 @@ final readonly class ModelLogoutMessageReceiver implements LogoutMessageReceiver
     }
 
     /**
-     * Section 6.6 step 4 in order (S-33): the chain found by the unverified InResponseTo, open and bound to the secret
-     * the browser presents (S-32), before any key is read or the answer remembered, so that a client that is not that
-     * browser spends nothing of the chain nor of the answer.
+     * Section 6.6 step 4, S-33: the chain and the secret of the browser are checked before any key is read or the
+     * answer remembered, so that another client spends nothing of either.
      *
      * @throws LogoutRefusedException
      */
@@ -187,8 +168,7 @@ final readonly class ModelLogoutMessageReceiver implements LogoutMessageReceiver
     }
 
     /**
-     * S-27, M-9: the single logout service of the accepted metadata the answer goes to, the first on the binding the
-     * request arrived over, or else the first listed; none is a refusal.
+     * S-27, M-9
      *
      * @throws LogoutRefusedException
      */

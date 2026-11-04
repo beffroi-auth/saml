@@ -12,12 +12,6 @@ use Beffroi\Saml\Domain\Metadata\MetadataLocation;
 use Beffroi\Saml\Domain\Metadata\PeerInterface;
 use function count;
 
-/**
- * A service provider of a tenant as the deployment declares it (spec/saml.md S-5, section 5.2): its entity ID, where
- * its metadata are read from and who signs them, the claims it is sent as attributes, whether it asks for its
- * assertions encrypted (S-7), and whether it signs its authentication requests, without which none of its requests
- * is accepted unsigned (S-9). Never registered by a request nor through a page: a declaration goes away when its block does.
- */
 final readonly class ServiceProvider implements PeerInterface
 {
     /**
@@ -26,12 +20,12 @@ final readonly class ServiceProvider implements PeerInterface
     public const int MAX_METADATA_SIGNERS = 16;
 
     /**
-     * The attributes per statement of `model.md` section 7, which the assertion of issue #731 carries (section 7).
+     * The attributes per statement of model.md section 7.
      */
     public const int MAX_ATTRIBUTES = 256;
 
     /**
-     * @param list<Certificate> $metadataSigners the certificates the metadata are verified under, none when the channel is trusted
+     * @param list<Certificate> $metadataSigners none when the channel is trusted
      * @param list<AttributeMapping> $attributes
      *
      * @throws InvalidArgumentException when the declaration does not hold together (section 6.2 step 1)
@@ -62,10 +56,6 @@ final readonly class ServiceProvider implements PeerInterface
         }
     }
 
-    /**
-     * Whether its metadata are verified under the signers it pins, `readSigned()`, rather than trusted by the
-     * channel they come through, `readTrusted()` (S-5).
-     */
     public function readsSigned(): bool
     {
         return $this->metadataSigners !== [];

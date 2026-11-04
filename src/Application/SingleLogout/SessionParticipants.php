@@ -11,9 +11,7 @@ use Beffroi\Saml\Port\SessionParticipationRepositoryInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Each service provider's part in a session of the core, recorded from the event single sign-on announces (spec/saml.md
- * S-26): one row per session and service provider, for a session that still exists, which the logout the identity
- * provider starts reads (issue #735).
+ * spec/saml.md S-26
  */
 final readonly class SessionParticipants
 {

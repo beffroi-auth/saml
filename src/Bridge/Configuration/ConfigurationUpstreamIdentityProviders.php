@@ -21,14 +21,7 @@ use function is_array;
 use function sprintf;
 
 /**
- * The upstream identity providers declared in the configuration of the deployment (spec/saml.md S-42, section 5.7),
- * keyed by entity ID, a URI as the model reads one (ModelEntityId), validated when they are built (section 6.10 step
- * 1): a declaration that does not hold together
- * fails there, naming the identity provider, a claim of the profile the deployment does not hold among them (S-45),
- * and a domain two of them declare fails naming it and both (S-44). The application builds this object when its container
- * is compiled, every claim named held, then again against the claims of the profile right after, in the same build,
- * so that it fails the build of the deployment rather than its first refresh or its first sign-in; a declaration
- * holding an environment variable is left to its first use. They are those of one tenant, named by its slug.
+ * spec/saml.md S-42, S-44, S-45, section 5.7, section 6.10 step 1
  */
 final readonly class ConfigurationUpstreamIdentityProviders implements UpstreamIdentityProvidersInterface
 {
@@ -38,10 +31,7 @@ final readonly class ConfigurationUpstreamIdentityProviders implements UpstreamI
     private array $identityProviders;
 
     /**
-     * @param array<array-key, mixed> $definitions by entity ID: metadata, metadata_signers, domains, email_attribute,
-     *                                             profile (a claim by attribute name), subject_attribute, groups
-     *                                             (attribute, and map, a group name by value),
-     *                                             require_encrypted_assertions, address_parameter
+     * @param array<array-key, mixed> $definitions by entity ID
      *
      * @throws InvalidArgumentException when a declaration does not hold together, or two declare one domain
      */

@@ -7,8 +7,7 @@ namespace Beffroi\Saml\Bridge\Model;
 use Beffroi\Saml\Domain\ServiceProvider\ServiceProvider;
 
 /**
- * A service provider a message names (spec/saml.md section 6.3 step 1): its declaration, and its accepted document
- * read back once, what this package reads of it beside the model's role.
+ * spec/saml.md section 6.3 step 1
  */
 final readonly class DeclaredServiceProvider
 {

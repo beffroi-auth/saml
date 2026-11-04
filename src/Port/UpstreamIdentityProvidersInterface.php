@@ -7,10 +7,6 @@ namespace Beffroi\Saml\Port;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Saml\Domain\Upstream\UpstreamIdentityProvider;
 
-/**
- * The upstream identity providers a tenant declares (spec/saml.md S-42, section 5.7): what the stories that read an
- * assertion of one of them are handed (S-45).
- */
 interface UpstreamIdentityProvidersInterface
 {
     /**
@@ -19,7 +15,7 @@ interface UpstreamIdentityProvidersInterface
     public function of(Tenant $tenant): array;
 
     /**
-     * The upstream identity provider of that entity ID, compared exactly, or null when the tenant declares none.
+     * The entity ID is compared exactly.
      */
     public function find(Tenant $tenant, string $entityId): ?UpstreamIdentityProvider;
 }

@@ -18,11 +18,9 @@ use Beffroi\Saml\Port\ServedClaimsInterface;
 use Psr\Log\LoggerInterface;
 
 /**
- * The attributes an assertion carries to a service provider (spec/saml.md S-16, section 6.4 step 6): one per mapping
- * of its declaration whose claim the user holds, in the order of the declaration, and nothing else. A claim that is
- * not the value of an attribute, a JSON object or a value holding a character XML does not carry, is not sent, and
- * the refusal is written to the log, naming the service provider, the claim and the rule and never the value: the
- * user's statement is sent whole or not at all, and the sign-on goes on.
+ * spec/saml.md S-16, section 6.4 step 6
+ *
+ * A claim that cannot be sent is logged by service provider, claim and rule, never by its value.
  */
 final readonly class AttributeRelease
 {

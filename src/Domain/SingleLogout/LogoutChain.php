@@ -16,22 +16,18 @@ use function hash_equals;
 use function sprintf;
 
 /**
- * A chain of logout the identity provider plays through the browser (spec/saml.md S-32): kept by the provider, found by
- * the SHA-256 of the reference its own pages hand on and by the ID of its outstanding request, played only by the
- * browser that holds the secret whose SHA-256 it keeps, open ten minutes from its last step, taken by the one request
- * that plays the next step.
+ * spec/saml.md S-32
  */
 final readonly class LogoutChain implements ClassifiedFieldsInterface
 {
     /**
-     * Seconds a chain stays open from its last step, the wait of a request for a login (S-18, section 7).
+     * Seconds a chain stays open from its last step, the wait of a request for a login (S-18).
      */
     public const int TTL = 600;
 
     /**
      * @param string $reference the SHA-256 of the reference, digestOf()
-     * @param string $secret the SHA-256 of the secret the browser that began the chain holds, LogoutChainSecret::digest()
-     * @param string|null $awaitingRequest the ID of the LogoutRequest whose answer the chain waits for
+     * @param string $secret the SHA-256 of the secret of the browser, LogoutChainSecret::digest()
      */
     public function __construct(
         public string $reference,
@@ -44,34 +40,23 @@ final readonly class LogoutChain implements ClassifiedFieldsInterface
     }
 
     /**
-     * What is kept of a reference, and of the secret of the browser: its SHA-256, in hexadecimal, so that a dump of the
-     * table resumes no chain.
+     * Only the digest is kept, so that a dump of the table resumes no chain.
      */
     public static function digestOf(string $value): string
     {
         return hash('sha256', $value);
     }
 
-    /**
-     * When a chain written at $now closes (S-32).
-     */
     public static function closesAt(DateTimeImmutable $now): DateTimeImmutable
     {
         return $now->add(new DateInterval(sprintf('PT%dS', self::TTL)));
     }
 
-    /**
-     * A chain past its ten minutes is closed: nothing resumes it, no answer is read for it.
-     */
     public function isOpen(DateTimeImmutable $now): bool
     {
         return $now < $this->expiresAt;
     }
 
-    /**
-     * Whether $secret is the one of the browser that began the chain: another plays no step of it, and neither does a
-     * browser that presents none.
-     */
     public function isHeldBy(LogoutChainSecret $secret): bool
     {
         return hash_equals($this->secret, $secret->digest());

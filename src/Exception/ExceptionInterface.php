@@ -7,7 +7,7 @@ namespace Beffroi\Saml\Exception;
 use Throwable;
 
 /**
- * What beffroi/saml throws of its own (spec/saml.md section 5).
+ * Its message names the rule and never a value (M-16), so that it can be shown and logged as it is.
  */
 interface ExceptionInterface extends Throwable
 {

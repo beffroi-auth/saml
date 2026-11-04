@@ -7,11 +7,6 @@ namespace Beffroi\Saml\Domain\ServiceProvider;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Saml\Domain\Metadata\Lexical;
 
-/**
- * A claim of the provider sent to a service provider as a SAML attribute (spec/saml.md section 5.2, Core §2.7.3.1):
- * the name of the claim, and the name, the name format and the friendly name of the attribute. The claim name is not
- * checked against the claims the provider holds: what a claim is worth in an assertion is issue #731's.
- */
 final readonly class AttributeMapping
 {
     /**

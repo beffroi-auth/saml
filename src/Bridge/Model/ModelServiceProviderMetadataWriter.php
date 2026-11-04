@@ -17,22 +17,10 @@ use Beffroi\Saml2\Model\Writing\MetadataWriter;
 use Beffroi\Xml\Core\Serializer;
 
 /**
- * The metadata of the service provider of a tenant written by saml2-model's MetadataWriter and serialized by Core
- * (spec/saml.md S-39, section 6.9 step 4): one md:EntityDescriptor whose entity ID is the one of S-38, one
- * md:SPSSODescriptor that says its requests are signed and wants the assertions it receives signed, a signing
- * certificate per SAML key in service, and one assertion consumer service on HTTP-POST, of index 0; the cacheDuration
- * of S-12 on the md:EntityDescriptor; an encryption certificate per key of the upstream identity provider the
- * description is written for, in its order, and none when it is written for none (S-65, section 6.12 step 4).
- *
- * Unsigned, as the metadata of the identity provider are (section 6.1 step 5). No validUntil, no single logout service
- * (Single Logout with an upstream identity provider is out of sub-spike 9d, section 11) and no NameID format, the
- * format the service provider asks for being the NameIDPolicy of its request (issue #783).
+ * spec/saml.md S-39, S-65, section 6.9 step 4. Unsigned, as the metadata of the identity provider are.
  */
 final readonly class ModelServiceProviderMetadataWriter implements ServiceProviderMetadataWriterInterface
 {
-    /**
-     * The index of the one assertion consumer service, an xs:unsignedShort the reader requires (SAML Metadata §2.2.3).
-     */
     private const int ASSERTION_CONSUMER_SERVICE_INDEX = 0;
 
     public function __construct(

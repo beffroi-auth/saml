@@ -13,16 +13,7 @@ use Beffroi\Saml2\Model\Metadata\IdentityProvider;
 use Psr\Clock\ClockInterface;
 
 /**
- * The metadata of an upstream identity provider read by saml2-model's MetadataReader, through MetadataDocumentReader
- * (spec/saml.md section 6.10 step 3): readTrusted() for a document its channel vouches for, readSigned() for one
- * signed under the certificates a declaration pins, which then carries a validUntil and is held to the document
- * accepted (S-6). Each refuses a document without an identity provider role (S-42), one whose role holds no key for
- * signing, and one with a single sign-on service the service provider would send a browser to that is not https on a
- * host (S-43). Its single logout services, its NameID formats and its WantAuthnRequestsSigned are not read (S-43).
- *
- * The accepted document is read back the same way, with readTrusted(), the channel being the provider's own sealed
- * store, when the service provider sends the provider a request (S-48, section 6.11 step 4): the model's role, which
- * holds the single sign-on services.
+ * spec/saml.md section 6.10 step 3, S-42, S-43
  */
 final readonly class ModelUpstreamMetadataReader implements UpstreamMetadataReaderInterface
 {
@@ -44,8 +35,7 @@ final readonly class ModelUpstreamMetadataReader implements UpstreamMetadataRead
     }
 
     /**
-     * The accepted document of an upstream identity provider read back (spec/saml.md S-48, section 6.11 step 4), held
-     * to S-42 and S-43 again: the model's role.
+     * S-48, section 6.11 step 4: held to S-42 and S-43 again.
      *
      * @throws MetadataRefusedException
      */
@@ -58,8 +48,6 @@ final readonly class ModelUpstreamMetadataReader implements UpstreamMetadataRead
     }
 
     /**
-     * @param bool $readSigned whether the document was verified under the certificates a declaration pins (S-6)
-     *
      * @throws MetadataRefusedException
      */
     private static function metadataOf(EntityDescriptor $descriptor, bool $readSigned): UpstreamMetadata
@@ -73,8 +61,7 @@ final readonly class ModelUpstreamMetadataReader implements UpstreamMetadataRead
     }
 
     /**
-     * S-42, S-43: the identity provider role of SAML 2.0 the document holds, its single sign-on services each https on
-     * a host.
+     * S-42, S-43
      *
      * @throws MetadataRefusedException
      */
@@ -88,8 +75,7 @@ final readonly class ModelUpstreamMetadataReader implements UpstreamMetadataRead
     }
 
     /**
-     * S-43: the certificates of the role a key for signing is in, one at least: an assertion of the provider is
-     * verified under them and under nothing it carries.
+     * S-43
      *
      * @return list<Certificate>
      *
@@ -106,8 +92,7 @@ final readonly class ModelUpstreamMetadataReader implements UpstreamMetadataRead
     }
 
     /**
-     * S-43: the Location of every md:SingleSignOnService the model kept, on HTTP-Redirect or HTTP-POST, is an https URL
-     * on a host (EndpointLocation): the service provider sends the browser there with its request.
+     * S-43: every single sign-on service is an https URL on a host.
      *
      * @throws MetadataRefusedException
      */

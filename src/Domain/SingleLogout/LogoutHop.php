@@ -8,11 +8,6 @@ use Beffroi\Core\Domain\Encoding\Document;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * A service provider left to tell of an ended session (spec/saml.md S-30): the session by its ID, which the request
- * names as its SessionIndex and whose user its NameID is computed for (S-31), and the entity ID of the service
- * provider.
- */
 final readonly class LogoutHop
 {
     public function __construct(
@@ -35,7 +30,7 @@ final readonly class LogoutHop
     /**
      * @param array<array-key, mixed> $document
      *
-     * @throws InvalidArgumentException when a member is missing or is not what a hop holds
+     * @throws InvalidArgumentException
      */
     public static function fromDocument(array $document): self
     {

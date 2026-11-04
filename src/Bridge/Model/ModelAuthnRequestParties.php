@@ -10,30 +10,19 @@ use Beffroi\Saml2\Model\Metadata\IdentityProvider;
 use Beffroi\Saml2\Model\Metadata\ServiceProvider;
 
 /**
- * The signature an authentication request needs, in saml2-model's terms (spec/saml.md S-9, section 6.3 step 3): the
- * service provider read from its accepted document and the identity provider of the tenant, each rebuilt with its flag
- * set to the requirement, every other value as it was. The model refuses an unsigned request when either flag is true
- * (model.md section 6.2 step 2), so the identity provider the metadata publish, which carries the setting of the
- * tenant, is never the one validate() is handed; the assertion consumer services stay those of the document (S-10).
+ * spec/saml.md S-9, S-10, section 6.3 step 3
+ *
+ * The model refuses an unsigned request when either flag is true, so validate() is never handed the identity
+ * provider the metadata publish.
  */
 final readonly class ModelAuthnRequestParties
 {
-    /**
-     * The service provider validate() is handed, its authnRequestsSigned the requirement.
-     */
     public ServiceProvider $serviceProvider;
 
-    /**
-     * Our own role as validate() is handed it, its wantAuthnRequestsSigned the requirement.
-     */
     public IdentityProvider $identityProvider;
 
     /**
-     * @param ServiceProvider $serviceProvider the service provider read from its accepted document
-     * @param IdentityProvider $identityProvider the identity provider of the tenant
-     *
-     * @throws InvalidArgumentException when the service provider is not the one the requirement was read for, of
-     *                                  another entity or signing where the requirement says none, a programming error
+     * @throws InvalidArgumentException when the service provider is not the one the requirement was read for
      */
     public function __construct(AuthnRequestSigning $signing, ServiceProvider $serviceProvider, IdentityProvider $identityProvider)
     {

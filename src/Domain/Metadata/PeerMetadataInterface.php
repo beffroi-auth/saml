@@ -7,10 +7,8 @@ namespace Beffroi\Saml\Domain\Metadata;
 use DateTimeImmutable;
 
 /**
- * What the rule against a rollback reads of a metadata document of a peer, whichever its role (spec/saml.md S-6,
- * section 5.2): the entity ID of the document, its `validUntil`, null when it carries none, and whether the reading
- * verified it under the certificates the declaration pins, which the reading says and never whoever replaces the
- * document accepted.
+ * What the rule against a rollback reads of a metadata document (spec/saml.md S-6). Whether the document was read
+ * signed is said by its reading, never by whoever replaces the accepted document.
  */
 interface PeerMetadataInterface
 {

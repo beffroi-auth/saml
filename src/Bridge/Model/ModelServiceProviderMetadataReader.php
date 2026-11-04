@@ -12,12 +12,7 @@ use Beffroi\Saml2\Model\Metadata\ServiceProvider;
 use Psr\Clock\ClockInterface;
 
 /**
- * The metadata of a service provider read by saml2-model's MetadataReader, through MetadataDocumentReader
- * (spec/saml.md section 6.2 steps 3 and 4): readTrusted() for a document its channel vouches for, readSigned() for one
- * signed under the certificates a declaration pins, which then carries a validUntil and is held to the document
- * accepted (S-6), each saying which of the two read it; each, and the reading back of the accepted document, refuses a
- * document without a service provider role and an endpoint the identity provider sends a browser to that is not https
- * on a host (S-11).
+ * spec/saml.md section 6.2 steps 3 and 4, S-11
  */
 final readonly class ModelServiceProviderMetadataReader implements ServiceProviderMetadataReaderInterface
 {
@@ -43,9 +38,7 @@ final readonly class ModelServiceProviderMetadataReader implements ServiceProvid
     }
 
     /**
-     * The accepted document of a service provider read back once (spec/saml.md section 6.3 step 1), with readTrusted(),
-     * the channel being its own sealed store: what the signature of its requests needs, and the model's role, which
-     * validates them and holds the assertion consumer services an answer goes to (S-10).
+     * Section 6.3 step 1: read with readTrusted(), the channel being the sealed store of the accepted documents.
      *
      * @throws MetadataRefusedException
      */
@@ -70,10 +63,7 @@ final readonly class ModelServiceProviderMetadataReader implements ServiceProvid
     }
 
     /**
-     * S-11: every endpoint of the role the identity provider sends a browser to, the Location of each
-     * md:AssertionConsumerService and the Location and the ResponseLocation of each md:SingleLogoutService the model
-     * kept, is an https URL on a host (EndpointLocation), at every reading, the reading back of the accepted document
-     * among them; the refusal names the endpoint and never its value (M-16).
+     * S-11: every endpoint the identity provider sends a browser to is an https URL on a host.
      *
      * @throws MetadataRefusedException
      */
@@ -99,8 +89,6 @@ final readonly class ModelServiceProviderMetadataReader implements ServiceProvid
     }
 
     /**
-     * @param bool $readSigned whether the document was verified under the certificates a declaration pins (S-6)
-     *
      * @throws MetadataRefusedException
      */
     private static function metadataOf(EntityDescriptor $descriptor, ServiceProvider $role, bool $readSigned): ServiceProviderMetadata

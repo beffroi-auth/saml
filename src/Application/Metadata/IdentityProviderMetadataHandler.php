@@ -18,33 +18,27 @@ use LogicException;
 use function sprintf;
 
 /**
- * The metadata of the identity provider of a tenant (spec/saml.md section 6.1): the certificate of each of its SAML
- * keys in service, its endpoints under its issuer, whether it wants the requests it receives signed, which is the
- * setting of the tenant and true unless it says otherwise (S-4, model.md section 6.9), and the cacheDuration a service
- * provider keeps it for, shorter than the staging delay of a SAML key (S-12).
+ * spec/saml.md section 6.1, S-4, S-12
  */
 final readonly class IdentityProviderMetadataHandler
 {
     /**
-     * The max-age of the JWK Set, which the staging window of a key derives from (architecture §3.3).
+     * The max-age of the JWK Set, in seconds, which the staging window of a key derives from.
      */
     public const int DEFAULT_MAX_AGE = 300;
 
     /**
-     * How long a service provider may keep the metadata, in seconds: one day, how often service providers refresh it
-     * (section 7), and a seventh of the staging delay of a SAML key (S-12).
+     * In seconds, shorter than the staging delay of a SAML key (S-12).
      */
     public const int DEFAULT_CACHE_DURATION = 86_400;
 
     /**
-     * @param bool $wantAuthnRequestsSigned the setting of the tenant (S-4)
-     * @param int $maxAge how long a cache may hold the metadata, in seconds: the max-age of the keys of the tenant
-     * @param int $cacheDuration how long a service provider may keep the metadata, in seconds (S-12)
-     * @param int $stagingDelay how long a staged SAML key is published before it signs, in seconds: what the
-     *                          cacheDuration is shorter than (S-12)
+     * @param int $maxAge in seconds
+     * @param int $cacheDuration in seconds
+     * @param int $stagingDelay in seconds
      *
      * @throws InvalidArgumentException when the lifetime is not a number of seconds, or the cacheDuration is not
-     *                                  shorter than the staging delay: a deployment learns it at boot
+     *                                  shorter than the staging delay
      */
     public function __construct(
         private SigningCertificates $certificates,
@@ -60,8 +54,8 @@ final readonly class IdentityProviderMetadataHandler
     }
 
     /**
-     * @throws KeyNotFoundException when the tenant holds no SAML key in service (section 6.1 step 1)
-     * @throws KmsUnavailableException when the KMS does not answer to open a key whose certificate is not built yet
+     * @throws KeyNotFoundException
+     * @throws KmsUnavailableException
      * @throws LogicException when the routes are not mounted under the issuer of the tenant
      * @throws RuntimeException when a certificate cannot be built
      */

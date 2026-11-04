@@ -15,21 +15,8 @@ use DateTimeImmutable;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * The newest metadata document accepted for a peer of a tenant, whichever its role (spec/saml.md S-6, S-8, S-42): the
- * bytes as they were read, never written again, their `validUntil` to the second, null when they carry none, and the
- * instant they were accepted. One per peer of a role of a tenant, by its entity ID.
- *
- * The rule against a rollback is this row's own (section 6.2 step 6), and it holds a document read under the signers
- * the declaration pins, which an older copy signed by the same key would pass as well: such a document is older than
- * the accepted one when its `validUntil` is earlier, or when it has none and the accepted one has one, and an older
- * document is refused rather than taken. A document its channel vouches for replaces the accepted one whatever its
- * `validUntil`, the channel vouching for the newer reading as it vouched for the older one, so that a document a host
- * held by somebody else wrote with a far `validUntil` is replaced at the next refresh and pins nothing (S-6).
- *
- * Each role keeps its documents in a table of its own, sealed in the family of that table (decision 0018), so the row
- * of a role is a class of its own, which classifies its document under that family and adds nothing else: the rule is
- * written here once for both. What it holds is written from the scope of that class too, when the mapping hydrates a
- * row, which is why it is protected and not private.
+ * spec/saml.md S-6, S-8, S-42. Its properties are protected(set): the mapping of each role hydrates a row from the
+ * scope of its own class.
  */
 abstract class AcceptedMetadata implements ClassifiedFieldsInterface
 {
@@ -50,21 +37,17 @@ abstract class AcceptedMetadata implements ClassifiedFieldsInterface
         $this->validUntil = self::toTheSecond($validUntil);
     }
 
-    /**
-     * Whether these are the bytes it holds already: a refresh that reads them again writes nothing.
-     */
     public function holds(string $document): bool
     {
         return $this->document === $document;
     }
 
     /**
-     * The document read now takes the place of this one (section 6.2 step 6): whatever its validUntil when its channel
-     * vouches for it, when it is not older than this one when it was read under the signers the declaration pins.
+     * Section 6.2 step 6. A document its channel vouches for replaces this one whatever its validUntil, so that one
+     * written with a far validUntil by whoever held the host pins nothing.
      *
-     * @throws MetadataRefusedException when the document was read signed and is older than this one (S-6), which is
-     *                                  then kept
-     * @throws InvalidArgumentException when the document is another entity's: a programming error of the caller
+     * @throws MetadataRefusedException when the document was read signed and is older than this one (S-6)
+     * @throws InvalidArgumentException when the document is another entity's
      */
     public function replaceWith(PeerMetadataInterface $metadata, string $document, DateTimeImmutable $at): void
     {
@@ -83,8 +66,7 @@ abstract class AcceptedMetadata implements ClassifiedFieldsInterface
     }
 
     /**
-     * S-6: a document read signed is older than this one when its validUntil is earlier than this one's, or when it has
-     * none and this one has one.
+     * S-6
      *
      * @throws MetadataRefusedException
      */
@@ -102,8 +84,8 @@ abstract class AcceptedMetadata implements ClassifiedFieldsInterface
     }
 
     /**
-     * The validUntil to the second, as its column keeps it: a document read again whose validUntil has a fraction of
-     * a second is not older than the one kept without it.
+     * As its column keeps it: a document read again whose validUntil has a fraction of a second is not older than
+     * the one kept without it.
      */
     private static function toTheSecond(?DateTimeImmutable $instant): ?DateTimeImmutable
     {
@@ -111,10 +93,6 @@ abstract class AcceptedMetadata implements ClassifiedFieldsInterface
     }
 
     /**
-     * What every row keeps besides its document, which the row of each role classifies, sealed in the family of its
-     * table (S-8): an `md:ContactPerson` names people, their electronic addresses and their telephone numbers. The
-     * entity ID names a service and is what a peer is found by.
-     *
      * @return array<string, FieldClassificationInterface>
      */
     public static function classifiedFields(): array

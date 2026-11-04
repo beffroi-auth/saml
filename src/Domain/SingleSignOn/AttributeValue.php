@@ -13,16 +13,13 @@ use function is_string;
 use function preg_match;
 
 /**
- * One value of an attribute, the text of a claim (spec/saml.md S-16): only the characters XML 1.0 carries, its Char
- * production (XML 1.0 §2.2), in UTF-8. A claim is written by the user it is about, a display name for one, and the DOM
- * cuts a string at its first NUL, so that a value written past it would be signed short; the serializer refuses the
- * other characters outside Char. Refused when it is built, whoever builds it, rather than cut or rewritten.
+ * spec/saml.md S-16, XML 1.0 §2.2. Refused when it is built: the DOM cuts a string at its first NUL, so a value
+ * written past it would be signed short.
  */
 final readonly class AttributeValue
 {
     /**
-     * Char ::= #x9 | #xA | #xD | [#x20-#xD7FF] | [#xE000-#xFFFD] | [#x10000-#x10FFFF]; a string that is not UTF-8 does
-     * not match it either.
+     * The Char production of XML 1.0 §2.2
      */
     private const string CHAR = '/^[\x{9}\x{A}\x{D}\x{20}-\x{D7FF}\x{E000}-\x{FFFD}\x{10000}-\x{10FFFF}]*$/Du';
 
@@ -38,13 +35,9 @@ final readonly class AttributeValue
     }
 
     /**
-     * The values of a claim as the provider serves it: a string as it is, an integer in decimal, a boolean "true" or
-     * "false" (XML Schema Part 2 §3.2.2.1), a list each of its members, in their order.
-     *
      * @return list<self>
      *
-     * @throws InvalidArgumentException when the claim is none of these, a JSON object among them, or a value of it is
-     *                                  refused
+     * @throws InvalidArgumentException
      */
     public static function ofClaim(mixed $claim): array
     {

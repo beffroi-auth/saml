@@ -27,26 +27,12 @@ use Beffroi\Xml\Core\Exception\RefusedXml;
 use InvalidArgumentException;
 
 /**
- * The AuthnRequest the service provider of a tenant sends an upstream identity provider, written with saml2-model's
- * objects and sent through saml2-bindings (spec/saml.md S-48, section 6.11 steps 4 and 5): the accepted document of the
- * provider read back from the table of its role (ModelUpstreamMetadataReader::readAccepted()), its Destination the
- * Location of the first single sign-on service on HTTP-Redirect of that document, or else of its first one, which the
- * model keeps on HTTP-POST; a new ID, the instant of the request, its Issuer the entity ID of the service provider with
- * no Format, the assertion consumer service of the metadata of the service provider with the binding of HTTP-POST, a
- * persistent NameIDPolicy that allows the provider to create the identifier, ForceAuthn when the request asks for it
- * (S-49); signed by the active SAML key of the tenant under RSA-SHA256 (TenantSigning), opened once the endpoint is
- * known, over the query string by RedirectSender for HTTP-Redirect, in its XML by PostSender for HTTP-POST; the
- * reference of S-50 as its RelayState; the hint of the address, when the request carries one, appended to the URL of
- * HTTP-Redirect after its Signature, outside the octets it covers, and to the action of the form of HTTP-POST (S-68).
- *
- * A provider with no accepted document, one whose document the reading back refuses now, a request the model or the
- * binding refuses to write and a key Dsig refuses to sign with are UpstreamSignOnRefusedException: no request is sent.
+ * spec/saml.md S-48, S-49, S-50, S-68, section 6.11 steps 4 and 5
  */
 final readonly class ModelAuthnRequestSender implements AuthnRequestSenderInterface
 {
     /**
-     * @param AcceptedMetadataRepositoryInterface $accepted the accepted documents of the upstream identity providers,
-     *                                                      the table of their role (S-42)
+     * @param AcceptedMetadataRepositoryInterface $accepted the table of the upstream identity providers (S-42)
      */
     public function __construct(
         private AcceptedMetadataRepositoryInterface $accepted,
@@ -60,8 +46,7 @@ final readonly class ModelAuthnRequestSender implements AuthnRequestSenderInterf
     public function send(Tenant $tenant, UpstreamAuthnRequest $request): SentAuthnRequest
     {
         $endpoint = $this->singleSignOnService($tenant, $request->identityProvider);
-        // the key opened apart from the writing: a key Dsig refuses to sign with is a request refused, and a key whose
-        // private half is not the one of its public JWK a fault of the deployment, which goes on as it is
+        // Opened apart from the writing: a key that does not match its public JWK is a fault, not a refusal.
         try {
             $signing = $this->signing->of($tenant);
         } catch (RefusedXml $exception) {
@@ -105,8 +90,7 @@ final readonly class ModelAuthnRequestSender implements AuthnRequestSenderInterf
     }
 
     /**
-     * S-68: the URL the binding wrote, with the hint of the address the request carries when it carries one, after
-     * whatever the binding signed.
+     * S-68: the hint is appended after whatever the binding signed.
      */
     private static function hinted(string $url, UpstreamAuthnRequest $request): string
     {
@@ -114,8 +98,7 @@ final readonly class ModelAuthnRequestSender implements AuthnRequestSenderInterf
     }
 
     /**
-     * S-48: the single sign-on service of the accepted document of the provider, on HTTP-Redirect when the document
-     * lists one, whatever their order, and else the first one, which the model keeps on HTTP-POST.
+     * S-48
      *
      * @throws UpstreamSignOnRefusedException
      */

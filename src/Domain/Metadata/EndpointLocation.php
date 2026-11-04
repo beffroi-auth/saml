@@ -8,18 +8,8 @@ use Beffroi\Core\Domain\Encoding\Host;
 use function preg_match;
 
 /**
- * Where the identity provider sends a browser for a service provider (spec/saml.md S-11): the Location of an
- * md:AssertionConsumerService, the Location and the ResponseLocation of an md:SingleLogoutService, which become the
- * action of a form, the target of a redirection and, by their origin, a source of the Content-Security-Policy of the
- * page that sends the browser there (S-36); and where the service provider sends a browser for an upstream identity
- * provider, the Location of an md:SingleSignOnService (S-43).
- *
- * An https URL, its scheme compared without regard to case (RFC 3986 §3.1), its authority a host and an optional port
- * and nothing else: no userinfo, and a host of the core's rule (Host), a name for the DNS of letters, digits, hyphens
- * and dots, which an IPv4 address is too, or an IPv6 literal between brackets, the rule a client of OpenID Connect is
- * held to as well. The reg-name of RFC 3986 admits more, its sub-delimiters among them, the ";" that ends a directive
- * of a policy and the "," that ends a policy. saml2-model, a model of the standard, accepts any absolute URI (M-6);
- * what an identity provider hands a browser is narrower.
+ * spec/saml.md S-11, S-43. Narrower than the reg-name of RFC 3986: its origin goes into a Content-Security-Policy,
+ * where a ";" ends a directive and a "," a policy.
  */
 final readonly class EndpointLocation
 {

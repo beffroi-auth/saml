@@ -41,17 +41,10 @@ use function random_bytes;
 use Throwable;
 
 /**
- * Single Logout started by the identity provider (spec/saml.md section 6.6): once a browser has ended the sessions it
- * held (S-29), every other service provider of those sessions told through that browser, one after the other, by a
- * signed LogoutRequest (S-30, S-31), its answer read before the next one (S-33), the chain kept by the provider and
- * played once, by the browser that began it alone (S-32), and ended where its starter said, the answer to the service
- * provider that asked written last (S-34).
+ * spec/saml.md section 6.6, S-29, S-30, S-31, S-32, S-33, S-34
  */
 final readonly class ProviderLogout
 {
-    /**
-     * The octets of the reference a chain is resumed by: 256 bits, in base64url without padding, 43 characters.
-     */
     private const int REFERENCE_BYTES = 32;
 
     public function __construct(
@@ -67,9 +60,7 @@ final readonly class ProviderLogout
     }
 
     /**
-     * Section 6.6 step 1: the chain of $sessions, ended already, the service provider of $requester left out (S-30),
-     * bound to the browser that ends them by a secret drawn for it (S-32). Nothing to tell and nobody to answer ends at
-     * once, nothing written.
+     * Section 6.6 step 1, S-30, S-32
      *
      * @param list<AuthenticationSession> $sessions
      * @param string|null $continueTo where the browser goes at the end when no service provider is to be answered
@@ -109,15 +100,11 @@ final readonly class ProviderLogout
     }
 
     /**
-     * Section 6.6 step 2: the chain written under $reference, open, waiting for no answer, bound to $secret, and taken
-     * by this request (S-32); then the next step. A step that fails writes the chain back as it was taken, under the
-     * same reference, and the failure goes up: the same request plays the step again (S-32).
-     *
-     * @param LogoutChainSecret|null $secret the secret the browser presents, null when it presents none
+     * Section 6.6 step 2, S-32
      *
      * @throws LogoutRefusedException when no open chain bound to $secret is there, or another request took it first
-     * @throws KeyNotFoundException when the tenant holds no active SAML key
-     * @throws KmsUnavailableException when the KMS does not answer
+     * @throws KeyNotFoundException
+     * @throws KmsUnavailableException
      * @throws RuntimeException when the salt of the tenant can neither be read nor drawn
      */
     public function resume(Tenant $tenant, string $reference, ?LogoutChainSecret $secret): PostedForm|RedirectedMessage|LogoutChainEnded
@@ -137,11 +124,7 @@ final readonly class ProviderLogout
     }
 
     /**
-     * Section 6.6 step 4: the answer of the outstanding request, validated already (S-33), carried by the browser the
-     * chain is bound to, the chain taken by this request (S-32); another status than Success counts; then the next
-     * step. A next step that fails cannot be played again by that answer, which the replay store remembers: the chain,
-     * the answer counted, is written back under a new reference, bound to the same browser, waiting for nothing, and
-     * handed on as a chain begun is, which plays the step again (S-32, S-35).
+     * Section 6.6 step 4, S-32, S-33, S-35
      *
      * @throws LogoutRefusedException when the browser that carried the answer is not the one the chain is bound to, or
      *                                another request took the chain first
@@ -165,7 +148,7 @@ final readonly class ProviderLogout
     }
 
     /**
-     * S-36: the single logout services a chain of $session would go to, which the page whose form may end it names.
+     * S-36
      *
      * @return list<string>
      */
@@ -182,9 +165,6 @@ final readonly class ProviderLogout
         return $destinations;
     }
 
-    /**
-     * A reference a chain is resumed by, drawn from random_bytes() (S-32).
-     */
     private static function reference(): string
     {
         return Base64Url::encode(random_bytes(self::REFERENCE_BYTES));
@@ -201,12 +181,7 @@ final readonly class ProviderLogout
     }
 
     /**
-     * Section 6.6 steps 3 and 5: the next service provider told, the chain written again waiting for its answer, a
-     * request posted reaching where the chain goes from there (S-36); a session no longer stored, a service provider the
-     * notifier cannot tell, or one whose request it cannot write, passed over (S-30); none left, the end (S-34), the
-     * answer to the service provider that asked among it.
-     *
-     * @param LogoutChain $chain the chain taken, whose reference and secret it is written again under
+     * Section 6.6 steps 3 and 5, S-30, S-34, S-36
      *
      * @throws KeyNotFoundException
      * @throws KmsUnavailableException
@@ -246,9 +221,9 @@ final readonly class ProviderLogout
     }
 
     /**
-     * Section 6.6 step 3: the request written for $hop, or null when it cannot be: its session no longer stored, its
-     * service provider one the notifier cannot tell, or one whose request it cannot write (S-30). The salt is the
-     * tenant's, read outside what passes a service provider over: a salt that cannot be read fails the step.
+     * Section 6.6 step 3, S-30
+     *
+     * The salt is read outside what passes a service provider over: a salt that cannot be read fails the step.
      *
      * @throws KeyNotFoundException
      * @throws KmsUnavailableException
@@ -269,12 +244,10 @@ final readonly class ProviderLogout
     }
 
     /**
-     * S-36: the form that posts a request of the chain, which a service provider may answer by a redirection of its
-     * submission, reaching the single logout service of the tenant, where that answer comes back, the single logout
-     * service of each service provider left to tell, and where the chain ends, the service provider that asked or the
-     * URL its starter named.
+     * S-36
      *
-     * @param string $singleLogout the single logout service of the tenant, as its metadata publish it
+     * A service provider may answer by a redirection of the submission, so the form may reach every place the chain
+     * goes from here.
      */
     private function reaching(Tenant $tenant, PostedForm $form, string $singleLogout, LogoutProgress $progress): PostedForm
     {

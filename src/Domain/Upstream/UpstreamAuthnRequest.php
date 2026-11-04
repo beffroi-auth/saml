@@ -10,23 +10,15 @@ use DateTimeImmutable;
 use function sprintf;
 use function strlen;
 
-/**
- * What the AuthnRequest the service provider of a tenant sends an upstream identity provider is written from
- * (spec/saml.md S-48, section 6.11 step 3): the entity ID of that provider, the endpoints of the service provider, its
- * entity ID the Issuer and its assertion consumer service where the response goes; whether the request forces a login
- * (S-49); its RelayState, the reference of S-50, never empty and within the 80 bytes of SAML Bindings §3.4.3 and
- * §3.5.3; the instant it is issued at; the hint of the address the person gave the login page, for a provider that
- * reads one (S-68), null otherwise.
- */
 final readonly class UpstreamAuthnRequest
 {
     /**
-     * SAML Bindings §3.4.3, §3.5.3: a RelayState "MUST NOT exceed 80 bytes in length" (section 7).
+     * SAML Bindings §3.4.3, §3.5.3
      */
     public const int MAX_RELAY_STATE_BYTES = 80;
 
     /**
-     * @throws InvalidArgumentException when the RelayState is empty or longer than 80 bytes, a programming error
+     * @throws InvalidArgumentException when the RelayState is empty or longer than 80 bytes
      */
     public function __construct(
         public string $identityProvider,

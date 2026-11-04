@@ -12,12 +12,6 @@ use Beffroi\Core\Domain\Tenant\Tenant;
 use DateTimeImmutable;
 use function hash;
 
-/**
- * An assertion or a logout message the model accepted (spec/saml.md S-23, S-53), remembered until the window in which
- * it would accept it again has closed (model.md M-11): keyed by the SHA-256 of its tenant, its issuer and its ID, each
- * followed by a NUL, which none of them holds, so that a key is 64 hexadecimal digits whatever the length of the
- * entity ID.
- */
 final readonly class RememberedMessage implements ClassifiedFieldsInterface
 {
     public function __construct(
@@ -28,7 +22,7 @@ final readonly class RememberedMessage implements ClassifiedFieldsInterface
     }
 
     /**
-     * The key of the message $id of $issuer under $tenant.
+     * Each part is followed by a NUL, which none of them holds.
      */
     public static function keyOf(Tenant $tenant, string $issuer, string $id): string
     {
